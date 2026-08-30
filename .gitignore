@@ -1,0 +1,33 @@
+*.iml
+.gradle/
+build/
+local.properties
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+.idea/
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# Cloudflare Worker local state and secrets.
+backend/node_modules/
+backend/.wrangler/
+backend/.dev.vars
+backend/dist/
+backend/coverage/
+backend/worker-startup.cpuprofile
+
+# Web client build and local dependencies.
+www/node_modules/
+www/dist/
+www/coverage/
+*.tsbuildinfo

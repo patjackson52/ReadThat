@@ -1,0 +1,64 @@
+{
+  "deployedAt": "2026-08-28T21:31:41Z",
+  "api": "https://readthat-api.example.com",
+  "database": "readthat",
+  "fictionalProfiles": true,
+  "posts": [
+    {
+      "fixtureId": "pnw-pack-system",
+      "subreddit": "pnwtrails",
+      "author": "evan_ontrail",
+      "commenter": "martin_builds",
+      "length": "moderate",
+      "postId": "50964f45-ee9c-5b06-8491-c4638e8f46b6",
+      "postUrl": "https://readthat-api.example.com/post/50964f45-ee9c-5b06-8491-c4638e8f46b6",
+      "postWords": 303,
+      "postProseParagraphs": 3,
+      "commentId": "de1922e7-1c03-5d80-ab62-372317578592",
+      "commentWords": 120,
+      "commentProseParagraphs": 1
+    },
+    {
+      "fixtureId": "pnw-shoulder-season-framework",
+      "subreddit": "pnwtrails",
+      "author": "evan_ontrail",
+      "commenter": "martin_builds",
+      "length": "long",
+      "postId": "d18471c7-18e0-57db-b206-4fcf502bfcb9",
+      "postUrl": "https://readthat-api.example.com/post/d18471c7-18e0-57db-b206-4fcf502bfcb9",
+      "postWords": 1396,
+      "postProseParagraphs": 19,
+      "commentId": "7a3ec071-2449-58d9-9806-bd283bd9ddb9",
+      "commentWords": 560,
+      "commentProseParagraphs": 7
+    },
+    {
+      "fixtureId": "robot-repeatable-failure",
+      "subreddit": "roboticslab",
+      "author": "martin_builds",
+      "commenter": "evan_ontrail",
+      "length": "moderate",
+      "postId": "04176780-75b1-5141-b47b-38c0c5f9449c",
+      "postUrl": "https://readthat-api.example.com/post/04176780-75b1-5141-b47b-38c0c5f9449c",
+      "postWords": 261,
+      "postProseParagraphs": 3,
+      "commentId": "3a36702f-7c36-57bb-bf4e-f60f386c6633",
+      "commentWords": 201,
+      "commentProseParagraphs": 3
+    },
+    {
+      "fixtureId": "robot-field-reliability",
+      "subreddit": "roboticslab",
+      "author": "martin_builds",
+      "commenter": "evan_ontrail",
+      "length": "long",
+      "postId": "9985a4b5-6994-5e1c-b742-3154836d76e1",
+      "postUrl": "https://readthat-api.example.com/post/9985a4b5-6994-5e1c-b742-3154836d76e1",
+      "postWords": 1380,
+      "postProseParagraphs": 25,
+      "commentId": "86aaf3a2-82ea-5862-9525-52a0f9005191",
+      "commentWords": 333,
+      "commentProseParagraphs": 5
+    }
+  ]
+}

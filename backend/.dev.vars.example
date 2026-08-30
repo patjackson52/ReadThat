@@ -1,0 +1,6 @@
+# Copy to .dev.vars for local development. Never commit real values.
+AUTH_PEPPER=replace-with-at-least-32-random-bytes
+ANALYTICS_ID_PEPPER=replace-with-a-different-analytics-hmac-secret
+CURSOR_SECRET=replace-with-a-different-random-secret
+MEDIA_SIGNING_SECRET=replace-with-a-third-random-secret
+IMAGES_SIGNING_KEY=copy-the-default-images-signing-key-for-local-development

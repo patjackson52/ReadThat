@@ -1,0 +1,115 @@
+{
+  "deployedAt": "2026-08-28",
+  "apiBaseUrl": "https://readthat-api.example.com",
+  "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=motion&limit=20",
+  "webUrl": "https://readthat-api.example.com/r/motion",
+  "cdnHost": "customer-lmyzrnktg8ca0fds.cloudflarestream.com",
+  "delivery": {
+    "provider": "Cloudflare Stream",
+    "formats": ["HLS", "DASH"],
+    "cachePolicy": "segments_only",
+    "renditions": ["1080x1920", "720x1280", "480x852", "360x640", "240x426"]
+  },
+  "videos": [
+    {
+      "pexelsId": 4832027,
+      "mediaId": "4da04293-6a06-413c-81d0-a87ef72b2d4d",
+      "postId": "622735f9-e923-4a05-ad42-514d1b2fe921",
+      "streamUid": "f248c2e7535860d780f3d1ad17b6eba6",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f248c2e7535860d780f3d1ad17b6eba6/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f248c2e7535860d780f3d1ad17b6eba6/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f248c2e7535860d780f3d1ad17b6eba6/thumbnails/thumbnail.jpg?time=1s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f248c2e7535860d780f3d1ad17b6eba6/watch"
+    },
+    {
+      "pexelsId": 34568748,
+      "mediaId": "281e2b49-efb5-4965-bf26-65b64b705688",
+      "postId": "781cabc6-bb35-4f17-adaf-979b52176ff9",
+      "streamUid": "e8d1b8d8c94a74e5c1b7b4c04beb0366",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e8d1b8d8c94a74e5c1b7b4c04beb0366/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e8d1b8d8c94a74e5c1b7b4c04beb0366/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e8d1b8d8c94a74e5c1b7b4c04beb0366/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e8d1b8d8c94a74e5c1b7b4c04beb0366/watch"
+    },
+    {
+      "pexelsId": 6083377,
+      "mediaId": "06599e5a-dbfe-4b9f-8d18-562024aeb47b",
+      "postId": "d482af5f-ae5e-44fc-a27f-3c56a14b8de3",
+      "streamUid": "d9016d79b650b07823b0ef418f99052d",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/d9016d79b650b07823b0ef418f99052d/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/d9016d79b650b07823b0ef418f99052d/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/d9016d79b650b07823b0ef418f99052d/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/d9016d79b650b07823b0ef418f99052d/watch"
+    },
+    {
+      "pexelsId": 20642962,
+      "mediaId": "9a102af0-bebf-4bfe-9ad2-aef8391e9e8a",
+      "postId": "decbd365-2c33-457b-9cb3-71209fdb9ab9",
+      "streamUid": "b533d69cd1f62698ebc68e216074006d",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b533d69cd1f62698ebc68e216074006d/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b533d69cd1f62698ebc68e216074006d/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b533d69cd1f62698ebc68e216074006d/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b533d69cd1f62698ebc68e216074006d/watch"
+    },
+    {
+      "pexelsId": 36024504,
+      "mediaId": "13d57fa8-8ce1-48a2-8021-0dcf59627cca",
+      "postId": "eabdda5f-344e-447f-ad34-208f1f1a8510",
+      "streamUid": "b413e10af41556f421e7342b53f7d294",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b413e10af41556f421e7342b53f7d294/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b413e10af41556f421e7342b53f7d294/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b413e10af41556f421e7342b53f7d294/thumbnails/thumbnail.jpg?time=3s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/b413e10af41556f421e7342b53f7d294/watch"
+    },
+    {
+      "pexelsId": 35187779,
+      "mediaId": "1a856e40-b19b-4b62-a53a-35ccc0f5d20f",
+      "postId": "ab04007c-869c-4373-a184-23b57fdb9e2d",
+      "streamUid": "f6b9d05e31112972c569917485fb45f4",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6b9d05e31112972c569917485fb45f4/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6b9d05e31112972c569917485fb45f4/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6b9d05e31112972c569917485fb45f4/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6b9d05e31112972c569917485fb45f4/watch"
+    },
+    {
+      "pexelsId": 34922859,
+      "mediaId": "983df2be-7756-4789-9744-a1ad809b5032",
+      "postId": "f3d29cd0-1bb6-4847-aec6-aacdbffffad3",
+      "streamUid": "f6c013d89ec87f5e46e9ec03f9f714d4",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6c013d89ec87f5e46e9ec03f9f714d4/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6c013d89ec87f5e46e9ec03f9f714d4/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6c013d89ec87f5e46e9ec03f9f714d4/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/f6c013d89ec87f5e46e9ec03f9f714d4/watch"
+    },
+    {
+      "pexelsId": 18130588,
+      "mediaId": "d0cde7dd-2091-4727-859a-0ee9e9972c3d",
+      "postId": "7a215f74-f229-456c-b86c-77b0f917324f",
+      "streamUid": "e6a6fb32841f17d4a269f161073b02de",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e6a6fb32841f17d4a269f161073b02de/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e6a6fb32841f17d4a269f161073b02de/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e6a6fb32841f17d4a269f161073b02de/thumbnails/thumbnail.jpg?time=3s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/e6a6fb32841f17d4a269f161073b02de/watch"
+    },
+    {
+      "pexelsId": 16377188,
+      "mediaId": "081aaef5-c641-499f-8d8e-36c98405e36e",
+      "postId": "ffae19d9-a5c3-441e-9bcd-65e6abf63175",
+      "streamUid": "46de1a59e543dc1c909c2b3db83bc952",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/46de1a59e543dc1c909c2b3db83bc952/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/46de1a59e543dc1c909c2b3db83bc952/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/46de1a59e543dc1c909c2b3db83bc952/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/46de1a59e543dc1c909c2b3db83bc952/watch"
+    },
+    {
+      "pexelsId": 27563314,
+      "mediaId": "c2cbf3fb-1c81-4dd0-88d1-e7422909c08b",
+      "postId": "d887a48f-2638-4f36-a70a-94e9ead2ce8b",
+      "streamUid": "04d07860c811befa331016705093cb39",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/04d07860c811befa331016705093cb39/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/04d07860c811befa331016705093cb39/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/04d07860c811befa331016705093cb39/thumbnails/thumbnail.jpg?time=2s&width=608&height=1080&fit=crop",
+      "previewUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/04d07860c811befa331016705093cb39/watch"
+    }
+  ]
+}

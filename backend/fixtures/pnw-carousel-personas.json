@@ -1,0 +1,311 @@
+{
+  "collection": {
+    "fixtureVersion": 1,
+    "name": "Pexels PNW outdoor carousel demo set",
+    "fictionalProfiles": true,
+    "profileNotice": "All profiles, biographies, communities, and post copy are fictional demo content. Pexels contributors are credited only as media creators and are not represented as these users.",
+    "searchUrl": "https://www.pexels.com/search/pnw/",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "licenseCapturedAt": "2026-08-29",
+    "processing": "Pexels CDN auto-compression with an aspect-preserving 1800px-wide resize. The same hosted image may be used as a landscape avatar and in a gallery."
+  },
+  "media": [
+    {
+      "pexelsId": 35000116,
+      "fileName": "35000116.jpg",
+      "title": "Foggy evergreen highway",
+      "description": "A rain-darkened highway curves through tall Pacific Northwest evergreens in dense fog.",
+      "creator": "Timberly Hawkins",
+      "sourceUrl": "https://www.pexels.com/photo/35000116/",
+      "sourceFileUrl": "https://images.pexels.com/photos/35000116/pexels-photo-35000116.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2696,
+      "byteSize": 441196,
+      "sha256": "da4fce8d243360f4b1ef639afd17ae3bcea14cc725bcb18b2fff94a54d613cf3"
+    },
+    {
+      "pexelsId": 10366593,
+      "fileName": "10366593.jpg",
+      "title": "Misty Columbia River Gorge",
+      "description": "Low clouds drift over a forest-lined reservoir in the Columbia River Gorge.",
+      "creator": "John De Leon",
+      "sourceUrl": "https://www.pexels.com/photo/10366593/",
+      "sourceFileUrl": "https://images.pexels.com/photos/10366593/pexels-photo-10366593.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 1200,
+      "byteSize": 146599,
+      "sha256": "18058b588108f006973a73e7e6789ccbf125a0926a04a11bbfd4c91adb8c2855"
+    },
+    {
+      "pexelsId": 12489081,
+      "fileName": "12489081.jpg",
+      "title": "Forest bridge in the fog",
+      "description": "A concrete arch bridge crosses a lush forest ravine beneath low fog.",
+      "creator": "Josh Hild",
+      "sourceUrl": "https://www.pexels.com/photo/12489081/",
+      "sourceFileUrl": "https://images.pexels.com/photos/12489081/pexels-photo-12489081.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2695,
+      "byteSize": 598040,
+      "sha256": "48fa8b147d6905275582f61519c4de162b90b3f3b41360452227ca1fcbfab508"
+    },
+    {
+      "pexelsId": 35660025,
+      "fileName": "35660025.jpg",
+      "title": "Clouds over a deep green valley",
+      "description": "Dark evergreen branches frame a cloud-wrapped Pacific Northwest valley.",
+      "creator": "Lure of Adventure",
+      "sourceUrl": "https://www.pexels.com/photo/35660025/",
+      "sourceFileUrl": "https://images.pexels.com/photos/35660025/pexels-photo-35660025.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 1201,
+      "byteSize": 409035,
+      "sha256": "033de32c5006b69b57622a3c689b8753a305597dae3cb6c63d28a53c04cc52d1"
+    },
+    {
+      "pexelsId": 10856043,
+      "fileName": "10856043.jpg",
+      "title": "Sun through coastal evergreens",
+      "description": "Late light reaches a coastal clearing through a stand of dark evergreen trees.",
+      "creator": "Anne McCarthy",
+      "sourceUrl": "https://www.pexels.com/photo/10856043/",
+      "sourceFileUrl": "https://images.pexels.com/photos/10856043/pexels-photo-10856043.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 1200,
+      "byteSize": 482289,
+      "sha256": "c380462b2351c17a91a32d5ad0a9b5e7cc2c9f4fc4c4ddba59af8cfbe6956b62"
+    },
+    {
+      "pexelsId": 10500552,
+      "fileName": "10500552.jpg",
+      "title": "Sunbeams in the firs",
+      "description": "Warm sunbeams filter between tall fir trunks in a Pacific Northwest forest.",
+      "creator": "Lukas Rodriguez",
+      "sourceUrl": "https://www.pexels.com/photo/10500552/",
+      "sourceFileUrl": "https://images.pexels.com/photos/10500552/pexels-photo-10500552.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2704,
+      "byteSize": 812881,
+      "sha256": "aa8cdfd52ed3e685df4f5a71bd95c2ca4341b47e5dfee6d1a9d7ace07c008f6a"
+    },
+    {
+      "pexelsId": 12480410,
+      "fileName": "12480410.jpg",
+      "title": "Alpine lake below a clouded ridge",
+      "description": "A clear alpine lake reflects forest and a partly snow-covered ridge beneath low cloud.",
+      "creator": "Anne McCarthy",
+      "sourceUrl": "https://www.pexels.com/photo/12480410/",
+      "sourceFileUrl": "https://images.pexels.com/photos/12480410/pexels-photo-12480410.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2700,
+      "byteSize": 677961,
+      "sha256": "a4206848abcc72574efce6a9c66b0e2a38363405b3f9ca73474ea415949c2fcf"
+    },
+    {
+      "pexelsId": 35660010,
+      "fileName": "35660010.jpg",
+      "title": "River through a misty gorge",
+      "description": "Whitewater runs below a steep, forested valley with mist hanging over the slopes.",
+      "creator": "Lure of Adventure",
+      "sourceUrl": "https://www.pexels.com/photo/35660010/",
+      "sourceFileUrl": "https://images.pexels.com/photos/35660010/pexels-photo-35660010.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2699,
+      "byteSize": 720524,
+      "sha256": "050d8d755d64f78346a5cf4f0d3f70bd2918a1638aab575609922d8c23d69d99"
+    },
+    {
+      "pexelsId": 7042881,
+      "fileName": "7042881.jpg",
+      "title": "Fog in the mountain firs",
+      "description": "A steep evergreen mountainside disappears into dense gray fog.",
+      "creator": "Robert Schrader",
+      "sourceUrl": "https://www.pexels.com/photo/7042881/",
+      "sourceFileUrl": "https://images.pexels.com/photos/7042881/pexels-photo-7042881.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2435,
+      "byteSize": 352628,
+      "sha256": "39636abd8cb6d145ebadc02029fc8af6645936baa161914c32d3afb7062989c4"
+    },
+    {
+      "pexelsId": 12707051,
+      "fileName": "12707051.jpg",
+      "title": "Approach road beneath the peaks",
+      "description": "A gravel forest road leads toward a rocky mountain breaking through the clouds.",
+      "creator": "Nicholas Espinosa",
+      "sourceUrl": "https://www.pexels.com/photo/12707051/",
+      "sourceFileUrl": "https://images.pexels.com/photos/12707051/pexels-photo-12707051.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 2402,
+      "byteSize": 565064,
+      "sha256": "bd2650011129b79860529ff457955a2a20801111a8f20148b300aa15b652ef18"
+    },
+    {
+      "pexelsId": 30314950,
+      "fileName": "30314950.jpg",
+      "title": "Olympic peaks across the water",
+      "description": "Snow-lined Olympic peaks rise beyond blue water and a wooded shoreline.",
+      "creator": "William Jacobs",
+      "sourceUrl": "https://www.pexels.com/photo/30314950/",
+      "sourceFileUrl": "https://images.pexels.com/photos/30314950/pexels-photo-30314950.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 900,
+      "byteSize": 208883,
+      "sha256": "8a3636b4165682355b9384a8a62c518922dc1e399fc821d7f532074e974ea008"
+    },
+    {
+      "pexelsId": 12492084,
+      "fileName": "12492084.jpg",
+      "title": "Golden light over forested ridges",
+      "description": "Low golden sunlight spills across layered evergreen ridges.",
+      "creator": "Julian Bracero",
+      "sourceUrl": "https://www.pexels.com/photo/12492084/",
+      "sourceFileUrl": "https://images.pexels.com/photos/12492084/pexels-photo-12492084.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 1200,
+      "byteSize": 311942,
+      "sha256": "50dffc0fa245cc1386580c4bd11194ad8de7e3963d556d1ffa8a4c9e25b789a1"
+    },
+    {
+      "pexelsId": 35660006,
+      "fileName": "35660006.jpg",
+      "title": "Mist crossing an evergreen ridge",
+      "description": "Bands of white mist cross a densely forested ridge in the Pacific Northwest.",
+      "creator": "Lure of Adventure",
+      "sourceUrl": "https://www.pexels.com/photo/35660006/",
+      "sourceFileUrl": "https://images.pexels.com/photos/35660006/pexels-photo-35660006.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 1201,
+      "byteSize": 228860,
+      "sha256": "f98713eb749475602de16f871b7a080fe2154431c11bab4deb917782986aaeb4"
+    },
+    {
+      "pexelsId": 28728724,
+      "fileName": "28728724.jpg",
+      "title": "North Cascades beyond a dark lake",
+      "description": "A dark alpine lake leads toward layered, cloud-covered North Cascades peaks.",
+      "creator": "MG Nation Studios",
+      "sourceUrl": "https://www.pexels.com/photo/28728724/",
+      "sourceFileUrl": "https://images.pexels.com/photos/28728724/pexels-photo-28728724.jpeg?auto=compress&cs=tinysrgb&w=1800",
+      "license": "Pexels License",
+      "contentType": "image/jpeg",
+      "width": 1800,
+      "height": 3200,
+      "byteSize": 593499,
+      "sha256": "5668e382f3b32e0132a10a955539f3918bf167eea20c72b013924263355e6f75"
+    }
+  ],
+  "personas": [
+    {
+      "profile": {
+        "username": "mossy_switchbacks",
+        "displayName": "Mara Chen",
+        "bio": "Seattle weekend hiker, trail-condition note taker, and unapologetic thermos carrier. Usually somewhere between a ferry line and a mossy switchback."
+      },
+      "community": {
+        "name": "pnwhiking",
+        "displayName": "PNW Hiking",
+        "description": "Trail reports, route ideas, conditions, stewardship, and soggy lessons from Washington, Oregon, and British Columbia."
+      },
+      "avatarPexelsId": 35000116,
+      "mediaPexelsIds": [35000116, 10366593, 12489081, 35660025, 10856043, 10500552, 12492084],
+      "posts": [
+        {
+          "postTitle": "The Gorge was running on full PNW mode today",
+          "body": "Low cloud, wet pavement, and every shade of green. The bridge viewpoint was quiet before breakfast and the rain never quite decided whether it was starting or stopping.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [12489081, 10366593, 35000116, 35660025]
+        },
+        {
+          "postTitle": "Four versions of partly cloudy in one weekend",
+          "body": "Coast light on Saturday, sunbeams for ten minutes on Sunday, then back into the fog. No summit photo, but the forest absolutely delivered.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [10856043, 10500552, 35000116, 12492084]
+        }
+      ]
+    },
+    {
+      "profile": {
+        "username": "alpine_start",
+        "displayName": "Theo Mercer",
+        "bio": "Bellingham mountaineer learning to make conservative calls before sunrise. Cascades approaches, snow transitions, rope systems, and strong diner coffee."
+      },
+      "community": {
+        "name": "cascades_alpine",
+        "displayName": "Cascades Alpine",
+        "description": "Pacific Northwest mountaineering, scrambling, glacier travel, snow conditions, decision making, and early alpine starts."
+      },
+      "avatarPexelsId": 12480410,
+      "mediaPexelsIds": [12480410, 12707051, 7042881, 30314950, 28728724],
+      "posts": [
+        {
+          "postTitle": "Shoulder-season recon: snow line, cloud deck, one clear window",
+          "body": "We treated this as a conditions walk, not a summit bid. Patchy snow started above the lake, visibility moved in and out, and the best decision of the day was keeping the turnaround time boring.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [12480410, 12707051, 7042881, 30314950]
+        },
+        {
+          "postTitle": "Approach views that almost convinced us to skip the summit",
+          "body": "Sometimes the long approach is the whole trip. Saving this sequence for the next time someone asks why the alarm was set for 2:45 a.m.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [28728724, 30314950, 12707051]
+        }
+      ]
+    },
+    {
+      "profile": {
+        "username": "granite_and_rain",
+        "displayName": "Rowan Bell",
+        "bio": "Portland climber and Cascades scrambler. Interested in quiet crags, long approaches, careful anchors, and the narrow weather window between damp and wetter."
+      },
+      "community": {
+        "name": "pnwclimbing",
+        "displayName": "PNW Climbing",
+        "description": "Pacific Northwest climbing and scrambling: conditions, approaches, partners, anchors, local ethics, and rain-window optimism."
+      },
+      "avatarPexelsId": 35660006,
+      "mediaPexelsIds": [35660006, 35660010, 35660025, 12492084],
+      "posts": [
+        {
+          "postTitle": "Wet approach, dry rock — the most PNW climbing day possible",
+          "body": "The trail was a creek and the valley stayed socked in, but the south-facing wall was somehow dry. We climbed three easy pitches and left before the next band arrived.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [35660010, 35660025, 12492084, 35660006]
+        },
+        {
+          "postTitle": "Scouting ridges for next weekend’s scramble",
+          "body": "No beta dump—just a weather and access look. Water is high, shaded approaches are still slick, and the ridge kept disappearing into cloud every few minutes.",
+          "flair": "Discussion",
+          "mediaPexelsIds": [35660006, 35660010, 35660025]
+        }
+      ]
+    }
+  ]
+}

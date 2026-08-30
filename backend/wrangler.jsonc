@@ -1,0 +1,66 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "readthat-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-28",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "../www/dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/v1/*", "/health"]
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    "ALLOWED_ORIGINS": "http://localhost:8080,http://10.0.2.2:8787",
+    "VIDEO_TRANSCODING": "stream",
+    "IMAGE_DELIVERY": "images",
+    "IMAGES_ACCOUNT_HASH": "REPLACE_WITH_CLOUDFLARE_IMAGES_ACCOUNT_HASH"
+  },
+  "images": {
+    "binding": "IMAGES"
+  },
+  "stream": {
+    "binding": "STREAM"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "readthat",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "readthat-media"
+    }
+  ],
+  "analytics_engine_datasets": [
+    {
+      "binding": "PERFORMANCE",
+      "dataset": "readthat_performance"
+    },
+    {
+      "binding": "PRODUCT_ANALYTICS",
+      "dataset": "readthat_product_analytics"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "POST_ROOMS", "class_name": "PostRoom" },
+      { "name": "RATE_LIMITERS", "class_name": "RateLimiter" }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PostRoom", "RateLimiter"]
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 }
+  }
+}

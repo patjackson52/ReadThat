@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Compose Material3 ships no XML themes, so the manifest theme is only the
+      pre-Compose splash/window styling. The real theming happens in MaterialTheme {}.
+    -->
+    <style name="Theme.ReadThat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

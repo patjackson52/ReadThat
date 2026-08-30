@@ -1,0 +1,132 @@
+{
+  "deployedAt": "2026-08-29T21:38:51-07:00",
+  "api": "https://readthat-api.example.com",
+  "fixtureVersion": 1,
+  "fictionalProfiles": true,
+  "pexelsSearchUrl": "https://www.pexels.com/search/pnw/",
+  "license": "Pexels License",
+  "licenseUrl": "https://www.pexels.com/license/",
+  "personas": [
+    {
+      "userId": "91648705-73fc-4c7b-a40d-c928eee49c56",
+      "username": "mossy_switchbacks",
+      "displayName": "Mara Chen",
+      "profileUrl": "https://readthat-api.example.com/v1/users/mossy_switchbacks",
+      "avatar": {
+        "pexelsId": 35000116,
+        "mediaId": "7b0337e2-e4c8-49a9-872c-46233bfa35da",
+        "imageId": "a0a2e350-9e3f-4a62-edbc-653ec2692001",
+        "stableUrl": "https://readthat-api.example.com/v1/users/mossy_switchbacks/avatar?v=1788064708269"
+      },
+      "community": {
+        "id": "eb1b4cf7-b79d-41ec-a862-018f7040ca3b",
+        "name": "pnwhiking",
+        "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=pnwhiking&limit=20"
+      },
+      "media": [
+        { "pexelsId": 35000116, "mediaId": "7b0337e2-e4c8-49a9-872c-46233bfa35da", "imageId": "a0a2e350-9e3f-4a62-edbc-653ec2692001" },
+        { "pexelsId": 10366593, "mediaId": "24f3b032-1e9e-4185-9c53-fb70ba77a07d", "imageId": "3c9086e6-7137-4abe-2a94-0e41892d9801" },
+        { "pexelsId": 12489081, "mediaId": "efc6af5a-0b38-4e5c-8da7-1a2233d78516", "imageId": "84960712-3ca6-426b-9cf1-6c6ff6b33701" },
+        { "pexelsId": 35660025, "mediaId": "b0b86f24-7219-40b6-a29a-64a487d8e508", "imageId": "b4819319-ca15-445a-6f9a-c6b506409b01" },
+        { "pexelsId": 10856043, "mediaId": "b3764a69-85ed-41c5-8441-8604e559bab2", "imageId": "8021d85e-6fdc-4a00-e338-a09a9f9f8b01" },
+        { "pexelsId": 10500552, "mediaId": "56b409b9-b9d4-48ff-abf2-80659bad6523", "imageId": "422b95fc-5233-4e6f-0c13-dbc04c9fa101" },
+        { "pexelsId": 12492084, "mediaId": "8b8883d9-e63d-4465-9fed-7319c0f5d9ce", "imageId": "84dedbcf-1f27-4cdc-a1a3-6a93a39b6301" }
+      ],
+      "posts": [
+        {
+          "postId": "26561742-8465-4bb8-8012-73b7dcf2fd5d",
+          "title": "The Gorge was running on full PNW mode today",
+          "postUrl": "https://readthat-api.example.com/v1/posts/26561742-8465-4bb8-8012-73b7dcf2fd5d",
+          "pexelsIds": [12489081, 10366593, 35000116, 35660025],
+          "carouselCount": 4
+        },
+        {
+          "postId": "ff2ec043-f0e3-4178-b579-45d7ad322b4f",
+          "title": "Four versions of partly cloudy in one weekend",
+          "postUrl": "https://readthat-api.example.com/v1/posts/ff2ec043-f0e3-4178-b579-45d7ad322b4f",
+          "pexelsIds": [10856043, 10500552, 35000116, 12492084],
+          "carouselCount": 4
+        }
+      ]
+    },
+    {
+      "userId": "636a6ddc-b948-4a4f-bd43-5741701677af",
+      "username": "alpine_start",
+      "displayName": "Theo Mercer",
+      "profileUrl": "https://readthat-api.example.com/v1/users/alpine_start",
+      "avatar": {
+        "pexelsId": 12480410,
+        "mediaId": "a444a749-1658-4429-88cd-679a1ca30bf5",
+        "imageId": "a36f4660-5016-4854-5526-f1d95b353401",
+        "stableUrl": "https://readthat-api.example.com/v1/users/alpine_start/avatar?v=1788064721395"
+      },
+      "community": {
+        "id": "ac4e8e88-30d9-4939-8c12-ff6ff8c65d9c",
+        "name": "cascades_alpine",
+        "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=cascades_alpine&limit=20"
+      },
+      "media": [
+        { "pexelsId": 12480410, "mediaId": "a444a749-1658-4429-88cd-679a1ca30bf5", "imageId": "a36f4660-5016-4854-5526-f1d95b353401" },
+        { "pexelsId": 12707051, "mediaId": "c7d24d4d-519b-44bb-8003-68d727b38685", "imageId": "de1f9b43-16e2-4bbd-bf3a-81866345ec01" },
+        { "pexelsId": 7042881, "mediaId": "48a94ac0-68da-4777-a6fe-99d33ed9e418", "imageId": "a6aaa9ba-b3c3-4733-58f6-a0b3b8805001" },
+        { "pexelsId": 30314950, "mediaId": "ef61295c-9f58-488f-9d5b-c28ebb01100b", "imageId": "ebfd976f-e795-4e7d-0966-5de34511bc01" },
+        { "pexelsId": 28728724, "mediaId": "59e62e36-519c-44b7-9bc4-1f3a8694689f", "imageId": "fbbfacff-d454-4861-51a1-3e3340e7cf01" }
+      ],
+      "posts": [
+        {
+          "postId": "38aa063a-11fb-4eb1-9277-d4e2f216f841",
+          "title": "Shoulder-season recon: snow line, cloud deck, one clear window",
+          "postUrl": "https://readthat-api.example.com/v1/posts/38aa063a-11fb-4eb1-9277-d4e2f216f841",
+          "pexelsIds": [12480410, 12707051, 7042881, 30314950],
+          "carouselCount": 4
+        },
+        {
+          "postId": "be0837f0-2b5c-4d9c-a852-25cb8081b924",
+          "title": "Approach views that almost convinced us to skip the summit",
+          "postUrl": "https://readthat-api.example.com/v1/posts/be0837f0-2b5c-4d9c-a852-25cb8081b924",
+          "pexelsIds": [28728724, 30314950, 12707051],
+          "carouselCount": 3
+        }
+      ]
+    },
+    {
+      "userId": "fa18892d-f936-41b7-821c-aafc9444b3e0",
+      "username": "granite_and_rain",
+      "displayName": "Rowan Bell",
+      "profileUrl": "https://readthat-api.example.com/v1/users/granite_and_rain",
+      "avatar": {
+        "pexelsId": 35660006,
+        "mediaId": "76715949-6651-4442-9870-e3b99720f701",
+        "imageId": "c061980b-1c9b-4a77-a830-b53b73372901",
+        "stableUrl": "https://readthat-api.example.com/v1/users/granite_and_rain/avatar?v=1788064731189"
+      },
+      "community": {
+        "id": "2cf94c11-29a6-4110-b8dd-3c3024ec4077",
+        "name": "pnwclimbing",
+        "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=pnwclimbing&limit=20"
+      },
+      "media": [
+        { "pexelsId": 35660006, "mediaId": "76715949-6651-4442-9870-e3b99720f701", "imageId": "c061980b-1c9b-4a77-a830-b53b73372901" },
+        { "pexelsId": 35660010, "mediaId": "2387d0be-f7fe-49ba-af65-5f21a45e0b5b", "imageId": "84b330ef-de03-464b-32d8-54a46ab15601" },
+        { "pexelsId": 35660025, "mediaId": "18ec925b-9281-4e56-8c27-5f8dde8eb1e1", "imageId": "37000409-b5a3-406b-636e-7c6acfd47001" },
+        { "pexelsId": 12492084, "mediaId": "2bc7b3dd-a606-40c3-95c3-e7edb9854790", "imageId": "dcba26af-c160-422d-8689-435cb8459f01" }
+      ],
+      "posts": [
+        {
+          "postId": "1534a0f5-6ac8-4c1b-b754-f4339cfdb845",
+          "title": "Wet approach, dry rock — the most PNW climbing day possible",
+          "postUrl": "https://readthat-api.example.com/v1/posts/1534a0f5-6ac8-4c1b-b754-f4339cfdb845",
+          "pexelsIds": [35660010, 35660025, 12492084, 35660006],
+          "carouselCount": 4
+        },
+        {
+          "postId": "c8cac82c-5f58-4f0b-90fe-99cb95bc89c7",
+          "title": "Scouting ridges for next weekend’s scramble",
+          "postUrl": "https://readthat-api.example.com/v1/posts/c8cac82c-5f58-4f0b-90fe-99cb95bc89c7",
+          "pexelsIds": [35660006, 35660010, 35660025],
+          "carouselCount": 3
+        }
+      ]
+    }
+  ]
+}

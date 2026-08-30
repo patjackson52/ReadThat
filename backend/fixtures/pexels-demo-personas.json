@@ -1,0 +1,230 @@
+{
+  "collection": {
+    "name": "Pexels fictional persona demo set",
+    "fictionalProfiles": true,
+    "profileNotice": "Names, biographies, communities, and post copy are fictional demo content. Pexels contributors are credited only as media creators and are not represented as these users.",
+    "searchUrls": [
+      "https://www.pexels.com/search/pnw/",
+      "https://www.pexels.com/search/robotics/"
+    ],
+    "avatarSearchUrl": "https://www.pexels.com/search/pnw%20hiker/",
+    "license": "Pexels License",
+    "licenseUrl": "https://www.pexels.com/license/",
+    "licenseCapturedAt": "2026-08-28",
+    "processing": "Pexels CDN auto-compression; square 800x800 crop for avatars and 1800px-wide aspect-preserving resize for post media."
+  },
+  "personas": [
+    {
+      "profile": {
+        "username": "evan_ontrail",
+        "displayName": "Evan Brooks",
+        "bio": "Tacoma-based weekend backpacker chasing shoulder-season trails, alpine lakes, and camp coffee. Trip notes, gear lessons, and Leave No Trace."
+      },
+      "community": {
+        "name": "pnwtrails",
+        "displayName": "PNW Trails",
+        "description": "A friendly trailhead for Pacific Northwest hiking and backpacking: trip inspiration, skills, gear lessons, stewardship, and rainy-day route planning."
+      },
+      "avatar": {
+        "pexelsId": 1390850,
+        "fileName": "evan-avatar.jpg",
+        "title": "Hiker in Leavenworth",
+        "description": "A hiker with a backpack exploring the mountainous landscape of Leavenworth, Washington.",
+        "creator": "Isabelle Quinn",
+        "creatorUrl": "https://www.pexels.com/@isabellequinn/",
+        "sourceUrl": "https://www.pexels.com/photo/man-standing-and-facing-trees-and-gray-rock-mountain-photo-1390850/",
+        "sourceFileUrl": "https://images.pexels.com/photos/1390850/pexels-photo-1390850.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=800",
+        "license": "Pexels License",
+        "contentType": "image/jpeg",
+        "width": 800,
+        "height": 800,
+        "byteSize": 111588,
+        "sha256": "83ac0655b81a55694ba0b7b54dd89b41814d9ede150235eb0e9c482bbe4e8ecf"
+      },
+      "posts": [
+        {
+          "postTitle": "Coastal miles are worth the wet socks",
+          "media": {
+            "pexelsId": 29412675,
+            "fileName": "pnw-oregon-coast.jpg",
+            "title": "Oregon coastline through fir trees",
+            "description": "Oregon's coastline seen through fir trees, with a sandy beach and rolling waves.",
+            "creator": "Liz Lauren",
+            "creatorUrl": "https://www.pexels.com/@liz-lauren-1472737/",
+            "sourceUrl": "https://www.pexels.com/photo/scenic-oregon-coastline-view-through-fir-trees-29412675/",
+            "sourceFileUrl": "https://images.pexels.com/photos/29412675/pexels-photo-29412675.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 1200,
+            "byteSize": 625872,
+            "sha256": "87364de22718707c9bd6100c1f27e86954d006575f3da58fd0fc8b8882b092c4"
+          }
+        },
+        {
+          "postTitle": "Cloud layers doing their thing over the Olympics",
+          "media": {
+            "pexelsId": 37792174,
+            "fileName": "pnw-olympic.jpg",
+            "title": "Cloudy Olympic National Park mountains",
+            "description": "Clouds drift across forested ridgelines in Olympic National Park, Washington.",
+            "creator": "Kanishk Gabel",
+            "creatorUrl": "https://www.pexels.com/@kanishk-gabel-150087668/",
+            "sourceUrl": "https://www.pexels.com/photo/serene-mountain-view-of-olympic-national-park-37792174/",
+            "sourceFileUrl": "https://images.pexels.com/photos/37792174/pexels-photo-37792174.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 2400,
+            "byteSize": 670002,
+            "sha256": "1d19a7abb0be567deb1ad257bab3db2ac56e586ee25433ec633a7f3b0d979981"
+          }
+        },
+        {
+          "postTitle": "Shoulder season in the North Cascades",
+          "media": {
+            "pexelsId": 28997841,
+            "fileName": "pnw-cascades.jpg",
+            "title": "Misty North Cascades",
+            "description": "Fog and fresh snow cover a rugged North Cascades ridgeline above autumn forest.",
+            "creator": "Alex Moliski",
+            "creatorUrl": "https://www.pexels.com/@alexmoliski/",
+            "sourceUrl": "https://www.pexels.com/photo/misty-mountains-in-north-cascades-national-park-28997841/",
+            "sourceFileUrl": "https://images.pexels.com/photos/28997841/pexels-photo-28997841.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 1200,
+            "byteSize": 434962,
+            "sha256": "f0a4c17964d20910ce5a307a9017d7996314703d434706fec45443708a5140b9"
+          }
+        },
+        {
+          "postTitle": "Rainier showed up for the walk home",
+          "media": {
+            "pexelsId": 28533819,
+            "fileName": "pnw-rainier.jpg",
+            "title": "Mount Rainier above the forest",
+            "description": "Mount Rainier rises beyond a dense evergreen forest under a bright sky.",
+            "creator": "Ken Cheatham",
+            "creatorUrl": "https://www.pexels.com/@ken-cheatham-1149801429/",
+            "sourceUrl": "https://www.pexels.com/photo/breathtaking-view-of-mount-rainier-national-park-28533819/",
+            "sourceFileUrl": "https://images.pexels.com/photos/28533819/pexels-photo-28533819.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 2250,
+            "byteSize": 675395,
+            "sha256": "d2fa3110a7317b102c226cdc6ea3694f8908f6547a2b799a09e1bd108bc01b5e"
+          }
+        }
+      ]
+    },
+    {
+      "profile": {
+        "username": "martin_builds",
+        "displayName": "Martin Kline",
+        "bio": "Robotics engineer building small autonomous machines and learning in public. ROS 2, embedded systems, perception stacks, and too many servos."
+      },
+      "community": {
+        "name": "roboticslab",
+        "displayName": "Robotics Lab",
+        "description": "Hands-on robotics for curious builders: mechanisms, perception, autonomy, embedded systems, lab notes, and the prototypes that teach us the most."
+      },
+      "avatar": {
+        "pexelsId": 8439175,
+        "fileName": "martin-avatar.jpg",
+        "title": "Engineer with robotic arm",
+        "description": "A bearded engineer holds a ceramic cup beside a robotic arm.",
+        "creator": "Pavel Danilyuk",
+        "creatorUrl": "https://www.pexels.com/@pavel-danilyuk/",
+        "sourceUrl": "https://www.pexels.com/photo/a-bearded-man-holding-a-cup-near-a-robot-8439175/",
+        "sourceFileUrl": "https://images.pexels.com/photos/8439175/pexels-photo-8439175.jpeg?auto=compress&cs=tinysrgb&fit=crop&w=800&h=800",
+        "license": "Pexels License",
+        "contentType": "image/jpeg",
+        "width": 800,
+        "height": 800,
+        "byteSize": 48572,
+        "sha256": "bd7608a4fd0f335c43a7569d8e5bd1c29862520c3891899160f2f71f091157da"
+      },
+      "posts": [
+        {
+          "postTitle": "Quadruped gait testing is getting wild",
+          "media": {
+            "pexelsId": 26804169,
+            "fileName": "robot-dog.jpg",
+            "title": "White quadruped robot",
+            "description": "A white quadruped robot stands on a floor at a technology event.",
+            "creator": "Gezer Amorim",
+            "creatorUrl": "https://www.pexels.com/@gezerasph/",
+            "sourceUrl": "https://www.pexels.com/photo/white-dog-robot-26804169/",
+            "sourceFileUrl": "https://images.pexels.com/photos/26804169/pexels-photo-26804169.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 2700,
+            "byteSize": 807458,
+            "sha256": "0654d7a78bdb34e7c07689fe61f19fc42a4ea1cd0290dfcf28816cde8db82202"
+          }
+        },
+        {
+          "postTitle": "Every elegant motion starts at the joints",
+          "media": {
+            "pexelsId": 29054364,
+            "fileName": "robot-arm.jpg",
+            "title": "Metallic robotic arm",
+            "description": "A detailed black-and-white view of a metallic robotic arm and articulated hand.",
+            "creator": "Wijs (Wise)",
+            "creatorUrl": "https://www.pexels.com/@wijs-wise-136435282/",
+            "sourceUrl": "https://www.pexels.com/photo/close-up-of-a-metallic-robot-arm-in-black-and-white-29054364/",
+            "sourceFileUrl": "https://images.pexels.com/photos/29054364/pexels-photo-29054364.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 2700,
+            "byteSize": 668908,
+            "sha256": "867be306d13c3335b5d17b21d5f69f0616b1d9069d039fde20b0ba91966c54b0"
+          }
+        },
+        {
+          "postTitle": "A repeatable test beats a heroic demo",
+          "media": {
+            "pexelsId": 8438992,
+            "fileName": "robot-lab.jpg",
+            "title": "Researchers testing a robot",
+            "description": "Two researchers test a robotic arm with a handheld control panel in a lab.",
+            "creator": "Pavel Danilyuk",
+            "creatorUrl": "https://www.pexels.com/@pavel-danilyuk/",
+            "sourceUrl": "https://www.pexels.com/photo/scientists-testing-a-device-8438992/",
+            "sourceFileUrl": "https://images.pexels.com/photos/8438992/pexels-photo-8438992.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 2696,
+            "byteSize": 495077,
+            "sha256": "7f69816fc479aff164779c00aee324a83ff5f4e8acc93e14a20a78acba3e7099"
+          }
+        },
+        {
+          "postTitle": "Designing expressions people can read at a glance",
+          "media": {
+            "pexelsId": 6019019,
+            "fileName": "robot-humanoid.jpg",
+            "title": "Humanoid robot with green eyes",
+            "description": "A white humanoid robot with glowing green eyes raises both hands.",
+            "creator": "Laura Musikanski",
+            "creatorUrl": "https://www.pexels.com/@laura-musikanski-821773/",
+            "sourceUrl": "https://www.pexels.com/photo/close-up-shot-of-a-white-robot-6019019/",
+            "sourceFileUrl": "https://images.pexels.com/photos/6019019/pexels-photo-6019019.jpeg?auto=compress&cs=tinysrgb&w=1800",
+            "license": "Pexels License",
+            "contentType": "image/jpeg",
+            "width": 1800,
+            "height": 1350,
+            "byteSize": 156193,
+            "sha256": "3d748c63c1daca9dd7e1c3be1cb07d396b18a8cd62df6338ea863027aaced5f2"
+          }
+        }
+      ]
+    }
+  ]
+}

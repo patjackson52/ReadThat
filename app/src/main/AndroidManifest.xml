@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- The release-shaped sample talks to the deployed Cloudflare API over TLS.
+         READTHAT_API_BASE_URL remains overridable for local and staging builds. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".ReadThatApplication"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false"
+        android:label="ReadThat"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ReadThat">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="ReadThat"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

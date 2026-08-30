@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-08-28T21:16:29Z",
+  "api": "https://readthat-api.example.com",
+  "sourceCatalog": "pexels-demo-personas.json",
+  "fictionalProfiles": true,
+  "delivery": {
+    "provider": "Cloudflare Images",
+    "note": "Avatar, feed, and detail URLs are signed and rotate. Resolve fresh CDN URLs from the stable profile, feed, and post API URLs below."
+  },
+  "personas": [
+    {
+      "userId": "d55619e4-ddd4-4be0-acb7-12be4405bd4e",
+      "username": "evan_ontrail",
+      "displayName": "Evan Brooks",
+      "profileUrl": "https://readthat-api.example.com/v1/users/evan_ontrail",
+      "avatar": {
+        "pexelsId": 1390850,
+        "mediaId": "f8ca5f64-006a-4a6a-b442-8937b999599c",
+        "imageId": "88a28577-10ca-4ff2-74c7-f21859314901",
+        "stableUrl": "https://readthat-api.example.com/v1/users/evan_ontrail/avatar?v=1787951682060"
+      },
+      "community": {
+        "id": "d8a43636-87a2-4f20-aed7-1fc9de926ca1",
+        "name": "pnwtrails",
+        "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=pnwtrails&limit=20"
+      },
+      "posts": [
+        {
+          "pexelsId": 29412675,
+          "mediaId": "ef633a05-d1a6-424f-9e7d-ac80fac9860b",
+          "imageId": "050a8ea7-3d5d-43f9-5c66-539d35827501",
+          "postId": "18913f3e-f010-4843-9ecf-171c86bb85cc",
+          "postUrl": "https://readthat-api.example.com/v1/posts/18913f3e-f010-4843-9ecf-171c86bb85cc"
+        },
+        {
+          "pexelsId": 37792174,
+          "mediaId": "cac9433c-347e-4999-a941-4f631754ce1e",
+          "imageId": "eb0e8955-03b6-4b22-a566-b4927f440d01",
+          "postId": "fecf343b-44b1-4228-b9cb-117876330839",
+          "postUrl": "https://readthat-api.example.com/v1/posts/fecf343b-44b1-4228-b9cb-117876330839"
+        },
+        {
+          "pexelsId": 28997841,
+          "mediaId": "57ede20c-bd43-4553-8625-5d80b475a8e6",
+          "imageId": "8cff4da8-dbe7-4de9-9412-c5cf5d30ad01",
+          "postId": "ba413c80-5f18-4121-a211-4bd6b5385fd0",
+          "postUrl": "https://readthat-api.example.com/v1/posts/ba413c80-5f18-4121-a211-4bd6b5385fd0"
+        },
+        {
+          "pexelsId": 28533819,
+          "mediaId": "425fe9a7-1348-47da-a103-ffd592b0de2c",
+          "imageId": "24cfdddd-dd8d-46eb-c154-330613650001",
+          "postId": "0f202646-973f-4aae-a373-d0008f74cb3c",
+          "postUrl": "https://readthat-api.example.com/v1/posts/0f202646-973f-4aae-a373-d0008f74cb3c"
+        }
+      ]
+    },
+    {
+      "userId": "f5564955-16c4-42c4-b4db-26faa0fc8882",
+      "username": "martin_builds",
+      "displayName": "Martin Kline",
+      "profileUrl": "https://readthat-api.example.com/v1/users/martin_builds",
+      "avatar": {
+        "pexelsId": 8439175,
+        "mediaId": "9045648f-5a08-4341-9836-061d63a38bdb",
+        "imageId": "1c44a12b-0ed7-4cde-47b1-5cb5cd166401",
+        "stableUrl": "https://readthat-api.example.com/v1/users/martin_builds/avatar?v=1787951699261"
+      },
+      "community": {
+        "id": "6056d861-e26e-4d39-9715-1905db5a787f",
+        "name": "roboticslab",
+        "feedUrl": "https://readthat-api.example.com/v1/feed?subreddit=roboticslab&limit=20"
+      },
+      "posts": [
+        {
+          "pexelsId": 26804169,
+          "mediaId": "df9149d9-2e0e-4e43-8eeb-c0dcae837022",
+          "imageId": "a99c71ce-62b9-43c7-9dc6-380f770fbe01",
+          "postId": "85319b36-c2bb-4d90-8dda-b86eb3f8cb40",
+          "postUrl": "https://readthat-api.example.com/v1/posts/85319b36-c2bb-4d90-8dda-b86eb3f8cb40"
+        },
+        {
+          "pexelsId": 29054364,
+          "mediaId": "c642e1fb-6ca7-4052-b059-5c76b8ca8062",
+          "imageId": "caa5fb53-150f-4436-1604-93411da9e401",
+          "postId": "ee3e5972-96b5-40bd-abea-5fc04a8855a5",
+          "postUrl": "https://readthat-api.example.com/v1/posts/ee3e5972-96b5-40bd-abea-5fc04a8855a5"
+        },
+        {
+          "pexelsId": 8438992,
+          "mediaId": "107e76f0-41eb-404e-bc2a-c2392a2c8d8f",
+          "imageId": "e88d70cb-0fad-42df-45e2-345e6ad02701",
+          "postId": "3a76f439-9736-4c72-a94a-1051c3d56ca7",
+          "postUrl": "https://readthat-api.example.com/v1/posts/3a76f439-9736-4c72-a94a-1051c3d56ca7"
+        },
+        {
+          "pexelsId": 6019019,
+          "mediaId": "ebf0dda3-8f60-459d-9030-9ab011b67e36",
+          "imageId": "ed78caff-0228-45bf-c634-06b3ebedd501",
+          "postId": "aac9099c-ec69-4a92-aaa1-4a28742491e7",
+          "postUrl": "https://readthat-api.example.com/v1/posts/aac9099c-ec69-4a92-aaa1-4a28742491e7"
+        }
+      ]
+    }
+  ]
+}

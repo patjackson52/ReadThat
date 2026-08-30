@@ -1,0 +1,41 @@
+{
+  "name": "readthat-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "wrangler types --check && tsc --noEmit",
+    "db:migrate:local": "wrangler d1 migrations apply readthat --local",
+    "db:migrate:remote": "wrangler d1 migrations apply readthat --remote",
+    "www:check": "npm --prefix ../www run check",
+    "www:test": "npm --prefix ../www test",
+    "www:build": "npm --prefix ../www run build",
+    "deploy": "npm run www:build && wrangler deploy --minify",
+    "deploy:dry-run": "npm run www:build && wrangler deploy --dry-run --outdir dist",
+    "dev": "wrangler dev --local",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "types": "wrangler types",
+    "startup": "wrangler check startup",
+    "smoke": "node scripts/smoke.mjs",
+    "smoke:creation": "node scripts/creation-smoke.mjs",
+    "smoke:video": "node scripts/video-smoke.mjs",
+    "seed:pexels-motion": "node scripts/seed-pexels-motion.mjs",
+    "seed:pexels-personas": "node scripts/seed-pexels-personas.mjs",
+    "seed:pnw-carousels": "node scripts/seed-pnw-carousels.mjs",
+    "seed:persona-conversations": "node scripts/seed-persona-conversations.mjs",
+    "seed:deeply-nested": "node scripts/seed-deeply-nested.mjs",
+    "smoke:image": "node scripts/image-smoke.mjs",
+    "smoke:avatar": "node scripts/avatar-smoke.mjs"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "^1.1.1",
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.127.0"
+  }
+}

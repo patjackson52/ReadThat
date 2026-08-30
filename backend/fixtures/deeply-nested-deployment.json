@@ -1,0 +1,124 @@
+{
+  "fixtureVersion": 1,
+  "deployedAt": "2026-08-28",
+  "apiBaseUrl": "https://readthat-api.example.com",
+  "community": {
+    "id": "8abd0732-9514-51a0-b347-69405b4e3e7a",
+    "name": "deeply_nested",
+    "displayName": "Deeply Nested",
+    "pageUrl": "https://readthat-api.example.com/r/deeply_nested",
+    "owner": "martin_builds",
+    "member": "evan_ontrail"
+  },
+  "totals": {
+    "posts": 8,
+    "postWords": 5714,
+    "comments": 1883,
+    "commentBodyUtf8Bytes": 1058547
+  },
+  "posts": [
+    {
+      "fixtureId": "initial-fetch-budget",
+      "postId": "a7dceb36-ad55-51a1-bec6-8d5db0706d8b",
+      "postUrl": "https://readthat-api.example.com/post/a7dceb36-ad55-51a1-bec6-8d5db0706d8b",
+      "workload": { "kind": "wide", "rootCount": 50 },
+      "postWords": 731,
+      "storedComments": 50,
+      "rootComments": 50,
+      "maxStoredDepth": 0,
+      "initial": { "comments": 8, "cursors": 1, "cursorRepresented": 42, "utf8Bytes": 9455, "gzipBytes": 2671 },
+      "full": { "comments": 50, "cursors": 0, "cursorRepresented": 0, "utf8Bytes": 46963, "gzipBytes": 3495 }
+    },
+    {
+      "fixtureId": "more-comments-accounting",
+      "postId": "1df8d107-d88a-5805-b949-f4ec81b86e79",
+      "postUrl": "https://readthat-api.example.com/post/1df8d107-d88a-5805-b949-f4ec81b86e79",
+      "workload": { "kind": "wide", "rootCount": 250 },
+      "postWords": 678,
+      "storedComments": 250,
+      "rootComments": 250,
+      "maxStoredDepth": 0,
+      "initial": { "comments": 8, "cursors": 3, "cursorRepresented": 242, "utf8Bytes": 17014, "gzipBytes": 6830 },
+      "full": { "comments": 200, "cursors": 1, "cursorRepresented": 50, "utf8Bytes": 183467, "gzipBytes": 10410 }
+    },
+    {
+      "fixtureId": "thread-data-structures",
+      "postId": "4a2ed4f1-5ece-5b17-b323-39b02b927843",
+      "postUrl": "https://readthat-api.example.com/post/4a2ed4f1-5ece-5b17-b323-39b02b927843",
+      "workload": { "kind": "wide", "rootCount": 1000 },
+      "postWords": 745,
+      "storedComments": 1000,
+      "rootComments": 1000,
+      "maxStoredDepth": 0,
+      "initial": { "comments": 8, "cursors": 10, "cursorRepresented": 992, "utf8Bytes": 47156, "gzipBytes": 22654 },
+      "full": { "comments": 200, "cursors": 8, "cursorRepresented": 800, "utf8Bytes": 213167, "gzipBytes": 26186 }
+    },
+    {
+      "fixtureId": "payload-budget-math",
+      "postId": "e7226b90-d324-5c05-b3ea-5974d55be933",
+      "postUrl": "https://readthat-api.example.com/post/e7226b90-d324-5c05-b3ea-5974d55be933",
+      "workload": { "kind": "deep", "levels": 10 },
+      "postWords": 749,
+      "storedComments": 10,
+      "rootComments": 1,
+      "maxStoredDepth": 9,
+      "initial": { "comments": 8, "cursors": 1, "cursorRepresented": 1, "utf8Bytes": 7575, "gzipBytes": 1755 },
+      "full": { "comments": 10, "cursors": 0, "cursorRepresented": 0, "utf8Bytes": 9101, "gzipBytes": 1784 }
+    },
+    {
+      "fixtureId": "offline-first-policy",
+      "postId": "77cb0963-fae3-54dc-b423-08f0021dbf57",
+      "postUrl": "https://readthat-api.example.com/post/77cb0963-fae3-54dc-b423-08f0021dbf57",
+      "workload": { "kind": "deep", "levels": 15 },
+      "postWords": 712,
+      "storedComments": 15,
+      "rootComments": 1,
+      "maxStoredDepth": 14,
+      "initial": { "comments": 8, "cursors": 1, "cursorRepresented": 1, "utf8Bytes": 7586, "gzipBytes": 1732 },
+      "full": { "comments": 11, "cursors": 1, "cursorRepresented": 1, "utf8Bytes": 10180, "gzipBytes": 1869 }
+    },
+    {
+      "fixtureId": "rendering-deep-chains",
+      "postId": "0799cd74-d4ec-5f22-b4ad-56a12454d6cb",
+      "postUrl": "https://readthat-api.example.com/post/0799cd74-d4ec-5f22-b4ad-56a12454d6cb",
+      "workload": { "kind": "deep", "levels": 20 },
+      "postWords": 679,
+      "storedComments": 20,
+      "rootComments": 1,
+      "maxStoredDepth": 19,
+      "initial": { "comments": 8, "cursors": 1, "cursorRepresented": 1, "utf8Bytes": 7575, "gzipBytes": 1716 },
+      "full": { "comments": 11, "cursors": 1, "cursorRepresented": 1, "utf8Bytes": 10211, "gzipBytes": 1852 }
+    },
+    {
+      "fixtureId": "rest-vs-websocket",
+      "postId": "44a9b9ba-541e-554e-9452-291bbd2119c3",
+      "postUrl": "https://readthat-api.example.com/post/44a9b9ba-541e-554e-9452-291bbd2119c3",
+      "workload": { "kind": "hybrid", "rootCount": 120, "chainLevels": 15, "sideRepliesPerLevel": 2 },
+      "postWords": 729,
+      "storedComments": 162,
+      "rootComments": 120,
+      "maxStoredDepth": 14,
+      "initial": { "comments": 8, "cursors": 10, "cursorRepresented": 136, "utf8Bytes": 14383, "gzipBytes": 5090 },
+      "full": { "comments": 150, "cursors": 1, "cursorRepresented": 3, "utf8Bytes": 134775, "gzipBytes": 7886 }
+    },
+    {
+      "fixtureId": "pathological-thread-test-plan",
+      "postId": "96e8a409-e718-5a25-b9c5-660be9e65dfa",
+      "postUrl": "https://readthat-api.example.com/post/96e8a409-e718-5a25-b9c5-660be9e65dfa",
+      "workload": { "kind": "hybrid", "rootCount": 300, "chainLevels": 20, "sideRepliesPerLevel": 3 },
+      "postWords": 691,
+      "storedComments": 376,
+      "rootComments": 300,
+      "maxStoredDepth": 19,
+      "initial": { "comments": 8, "cursors": 11, "cursorRepresented": 324, "utf8Bytes": 21886, "gzipBytes": 9081 },
+      "full": { "comments": 200, "cursors": 12, "cursorRepresented": 144, "utf8Bytes": 188425, "gzipBytes": 13120 }
+    }
+  ],
+  "verification": {
+    "d1CountsAndDepths": "passed",
+    "postAndCommentApis": "passed",
+    "loadMore100Ids": "passed",
+    "browserCommunityAndWideThread": "passed",
+    "browserTwentyLevelExpansion": "passed"
+  }
+}

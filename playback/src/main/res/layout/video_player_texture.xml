@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Preserve the encoded aspect ratio and expose the complete frame. On a portrait
+     viewport landscape video reaches both width edges; portrait video reaches both
+     height edges. The unused axis is letterboxed by the owning surface. -->
+<androidx.media3.ui.PlayerView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/transparent"
+    app:keep_content_on_player_reset="true"
+    app:resize_mode="fit"
+    app:show_buffering="never"
+    app:shutter_background_color="@android:color/transparent"
+    app:surface_type="texture_view"
+    app:use_controller="false" />
