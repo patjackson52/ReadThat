@@ -9,8 +9,10 @@
     <application
         android:name=".ReadThatApplication"
         android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"
         android:label="ReadThat"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@style/Theme.ReadThat">
         <activity

@@ -87,6 +87,7 @@ import dev.readthat.domain.ImageMediaUi
 import dev.readthat.domain.NormalFeedMediaContext
 import dev.readthat.domain.toPostTransitionPreview
 import dev.readthat.core.ui.markdown.MarkdownText
+import dev.readthat.core.ui.brand.ReadThatLogo
 import dev.readthat.core.ui.typography.ReadThatTextStyles
 import dev.readthat.shared.AppSettings
 import dev.readthat.shared.VideoPlaybackPolicy
@@ -1231,6 +1232,10 @@ private fun HomeHeader(
         IconButton(onClick = onOpenNavigation, modifier = Modifier.size(40.dp)) {
             Icon(Icons.Default.Menu, "Open community menu", Modifier.size(28.dp))
         }
+        ReadThatLogo(
+            modifier = Modifier.size(34.dp).clip(RoundedCornerShape(9.dp)),
+            contentDescription = "ReadThat",
+        )
         Row(
             Modifier.weight(1f).height(46.dp)
                 .clickable(onClick = onSearch)

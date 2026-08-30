@@ -67,7 +67,7 @@ export default function App() {
     <header className="app-header">
       <div className="header-inner">
         <button className="icon-button mobile-only" type="button" aria-label="Open menu" aria-expanded={mobileMenu} onClick={() => setMobileMenu((value) => !value)}><Icon name="menu" /></button>
-        <Link className="brand" to="/" viewTransition aria-label="ReadThat home"><span className="brand-mark"><i /><i /><i /></span><strong>ReadThat</strong></Link>
+        <Link className="brand" to="/" viewTransition aria-label="ReadThat home"><img className="brand-logo" src="/icons/readthat-logo-64.png" alt="" width="34" height="34" /><strong>ReadThat</strong></Link>
         <form className="global-search" role="search" onSubmit={search}><button className="search-submit" type="submit" aria-label="Search"><Icon name="search" /></button><input name="q" aria-label="Search ReadThat" placeholder="Search conversations" /><kbd>⌘ K</kbd></form>
         <div className="header-actions">
           {installPrompt && <button className="header-button desktop-only" type="button" onClick={() => void install()}><Icon name="install" /> Install</button>}

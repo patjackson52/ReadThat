@@ -6,7 +6,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val ReadThatOrange = Color(0xFFFF4500)
+val ReadThatOrange = Color(0xFFF04424)
 val ReadThatBlue = Color(0xFF0A449B)
 val ReadThatNavy = Color(0xFF0B1416)
 val ReadThatSurface = Color(0xFFF6F8F9)

@@ -5,6 +5,6 @@
       pre-Compose splash/window styling. The real theming happens in MaterialTheme {}.
     -->
     <style name="Theme.ReadThat" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:windowBackground">@color/readthat_coral</item>
     </style>
 </resources>

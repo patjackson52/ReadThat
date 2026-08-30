@@ -10,6 +10,7 @@ android {
 dependencies {
     implementation(platform(libs.compose.bom))
     api(libs.compose.ui)
+    implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
 
     testImplementation(libs.junit4)

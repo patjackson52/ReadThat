@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ReadThat" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/readthat_coral</item>
+        <item name="android:windowSplashScreenBackground">@color/readthat_coral</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="android:windowSplashScreenIconBackgroundColor">@color/readthat_coral</item>
+    </style>
+</resources>
