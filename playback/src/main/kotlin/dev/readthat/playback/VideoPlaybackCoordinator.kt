@@ -93,6 +93,17 @@ internal fun videoPreloadTier(distance: Int, playbackActive: Boolean): VideoPrel
     else -> VideoPreloadTier.None
 }
 
+/** Maps an occurrence-based viewport index onto Media3's stable-key-deduplicated source list. */
+internal fun deduplicatedVideoFocusIndex(
+    sources: List<AdaptiveVideoSource>,
+    requestedFocusIndex: Int,
+): Int {
+    if (sources.isEmpty()) return -1
+    val requestedKey = sources[requestedFocusIndex.coerceIn(sources.indices)].stableKey
+    return sources.distinctBy(AdaptiveVideoSource::stableKey)
+        .indexOfFirst { it.stableKey == requestedKey }
+}
+
 /**
  * A playing feed-to-detail handoff keeps controls available on tap, but must not let PlayerView's
  * default auto-show policy flash them when the already-playing player is attached to its new view.
@@ -108,6 +119,13 @@ internal fun suppressVideoControllerAutoShow(
     sameMedia &&
     playWhenReady &&
     !playbackEnded
+
+/** A progress publisher only runs while one foreground surface owns actively playing media. */
+internal fun shouldPublishVideoProgress(
+    hasWinner: Boolean,
+    appForeground: Boolean,
+    isPlaying: Boolean,
+): Boolean = hasWinner && appForeground && isPlaying
 
 /**
  * Process-scoped playback owner.
@@ -227,6 +245,13 @@ object VideoPlaybackCoordinator {
     fun replay(source: AdaptiveVideoSource) {
         requireMainThread()
         withExistingOrInitializingSession { it.replay(source) }
+    }
+
+    /** Seeks only if [source] still owns the process player; playback intent is preserved. */
+    @MainThread
+    fun seekTo(source: AdaptiveVideoSource, positionMs: Long) {
+        requireMainThread()
+        withExistingOrInitializingSession { it.seekTo(source, positionMs) }
     }
 
     /** Changes audio only if [source] is still the active item. */
@@ -401,6 +426,8 @@ private class PlaybackSession(
     var renderedMediaKey: String? = null
         private set
 
+    private val publishProgress = Runnable { notifyWinner() }
+
     val hasPlayer: Boolean get() = playerOrNull != null
 
     private val pauseIfIdle = Runnable {
@@ -520,7 +547,17 @@ private class PlaybackSession(
         if (currentSource?.stableKey != source.stableKey) return
         val player = playerOrNull ?: return
         player.seekTo(0L)
+        if (player.playerError != null || player.playbackState == Player.STATE_IDLE) {
+            player.prepare()
+        }
         player.play()
+        notifyWinner()
+    }
+
+    fun seekTo(source: AdaptiveVideoSource, positionMs: Long) {
+        if (currentSource?.stableKey != source.stableKey) return
+        val player = playerOrNull ?: return
+        player.seekTo(clampVideoSeekPosition(positionMs, player.duration))
         notifyWinner()
     }
 
@@ -539,6 +576,7 @@ private class PlaybackSession(
             playerOrNull?.pause()
             flushPlayback(ProductEventReason.PAUSE)
             disablePreloadWindow()
+            scheduleProgressPublication()
         } else {
             reconcilePreloads()
             reconcile(applyPlayIntent = true)
@@ -551,6 +589,7 @@ private class PlaybackSession(
         handler.removeCallbacks(stopIfIdle)
         handler.removeCallbacks(detachStaleView)
         handler.removeCallbacks(pauseIfLifecyclePending)
+        handler.removeCallbacks(publishProgress)
         flushPlayback(ProductEventReason.PAUSE)
         switchView(null)
         playerOrNull?.removeListener(this)
@@ -593,7 +632,8 @@ private class PlaybackSession(
             disablePreloadWindow()
             return
         }
-        val focus = requestedFocusIndex.coerceIn(playable.indices)
+        val focus = deduplicatedVideoFocusIndex(sources, requestedFocusIndex)
+            .coerceIn(playable.indices)
         preloadControl.enabled = true
         preloadControl.focusIndex = focus
         preloadControl.playbackActive = requests.isNotEmpty()
@@ -647,7 +687,10 @@ private class PlaybackSession(
         val request = next?.value
         preloadControl.playbackActive = request != null
 
-        if (request == null || !appForeground) return
+        if (request == null || !appForeground) {
+            scheduleProgressPublication()
+            return
+        }
         val player = player()
         val sameMedia = currentSource?.stableKey == request.source.stableKey
         val transferring = oldWinner != winner && sameMedia && request.continueExistingPlayback
@@ -711,6 +754,9 @@ private class PlaybackSession(
 
     private fun switchMedia(player: ExoPlayer, source: AdaptiveVideoSource) {
         flushPlayback(ProductEventReason.MEDIA_CHANGE)
+        // A new source must clear the previous clip's TextureView frame immediately. Same-source
+        // navigation handoffs are handled separately by configureView after identity is known.
+        attachedView?.setKeepContentOnPlayerReset(false)
         currentSource = source
         renderedMediaKey = null
         attemptedFallback = false
@@ -748,11 +794,12 @@ private class PlaybackSession(
         view.controllerAutoShow = showControls && !suppressController
         view.useController = showControls
         if (suppressController) view.hideController()
-        // Feed surfaces retain a decoded poster/last frame until the next first-frame callback.
-        // PlayerView's indeterminate spinner otherwise flashes for every normal MediaSource
-        // transition, including a fully preloaded source that only needs decoder attachment.
+        // Retain content only for an already-rendered same-source handoff. Keeping content across
+        // a MediaSource change leaks the previous clip's last frame into the next feed cell.
         view.setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
-        view.setKeepContentOnPlayerReset(true)
+        view.setKeepContentOnPlayerReset(
+            keepContentOnPlayerReset(request?.source?.stableKey, renderedMediaKey),
+        )
         return suppressController
     }
 
@@ -830,8 +877,25 @@ private class PlaybackSession(
     }
 
     private fun notifyWinner() {
-        val request = winner?.let(requests::get) ?: return
-        request.onPlaybackState(playbackSnapshot())
+        winner?.let(requests::get)?.onPlaybackState?.invoke(playbackSnapshot())
+        scheduleProgressPublication()
+    }
+
+    /**
+     * Media3 reports state transitions but not a continuous playhead. Re-publish the existing
+     * player snapshot while it is actually advancing so shared Compose transport controls stay
+     * synchronized without polling from every feed cell.
+     */
+    private fun scheduleProgressPublication() {
+        handler.removeCallbacks(publishProgress)
+        if (shouldPublishVideoProgress(
+                hasWinner = winner?.let(requests::containsKey) == true,
+                appForeground = appForeground,
+                isPlaying = playerOrNull?.isPlaying == true,
+            )
+        ) {
+            handler.postDelayed(publishProgress, PLAYBACK_PROGRESS_INTERVAL_MS)
+        }
     }
 
     private fun playbackSnapshot(forced: VideoPlaybackState? = null): VideoPlaybackSnapshot {
@@ -916,8 +980,21 @@ private class PlaybackSession(
         const val NAVIGATION_LIFECYCLE_GRACE_MS = 750L
         const val IDLE_MEDIA_RELEASE_MS = 30_000L
         const val MIN_PLAYBACK_EVENT_MS = 100L
+        const val PLAYBACK_PROGRESS_INTERVAL_MS = 100L
     }
 }
+
+internal fun clampVideoSeekPosition(requestedMs: Long, durationMs: Long): Long {
+    val nonNegative = requestedMs.coerceAtLeast(0L)
+    return if (durationMs == C.TIME_UNSET || durationMs <= 0L) {
+        nonNegative
+    } else {
+        nonNegative.coerceAtMost(durationMs)
+    }
+}
+
+internal fun keepContentOnPlayerReset(requestSourceKey: String?, renderedMediaKey: String?): Boolean =
+    requestSourceKey != null && requestSourceKey == renderedMediaKey
 
 private val VideoPlaybackRole.productSurface: ProductSurface
     get() = when (this) {

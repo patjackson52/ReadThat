@@ -1,22 +1,26 @@
 package dev.readthat.data.backend
 
 import android.content.Context
+import android.net.Uri
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import dev.readthat.BuildConfig
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatClientRegistry
+import dev.readthat.client.ReadThatConditionalResponse
+import dev.readthat.client.ReadThatHttpException
 import dev.readthat.shared.SessionState
 import dev.readthat.shared.UserProfile
 import dev.readthat.data.db.AccountEntity
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.networking.RepeatableBody
 import dev.readthat.networking.TransportRequest
 import dev.readthat.networking.TransportResponse
 import dev.readthat.networking.UnifiedTransport
 import dev.readthat.observability.PerformanceBatch
-import dev.readthat.observability.PerformanceWireFormat
 import dev.readthat.observability.ProductAnalyticsBatch
-import dev.readthat.observability.ProductAnalyticsWireFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +33,6 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -52,87 +55,62 @@ class BackendClient(context: Context) {
     private val username = BuildConfig.READTHAT_DEMO_USERNAME
     private val password = BuildConfig.READTHAT_DEMO_PASSWORD
     private val sessionStore = SecureSessionStore(context.applicationContext, json)
-    private val accountDao = AppDatabase.get(context.applicationContext).accountDao()
+    private val accountDao = AndroidDatabaseProvider.get(context.applicationContext).accountDao()
     private val applicationContext = context.applicationContext
+    private val sharedClient = AndroidReadThatClientRegistry.get(
+        applicationContext,
+        AndroidReadThatClientConfiguration(
+            baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+            appVersion = BuildConfig.VERSION_NAME,
+            demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+            demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+        ),
+    ).client
     private val authMutex = Mutex()
     private val mutableSessionState = MutableStateFlow<SessionState>(SessionState.Restoring)
 
-    val enabled: Boolean get() = baseUrl.startsWith("https://")
+    val enabled: Boolean get() = sharedClient.enabled
     val sessionState: StateFlow<SessionState> = mutableSessionState.asStateFlow()
 
+    /** Compatibility bridge while the mature shell still observes the legacy session flow. */
+    fun adoptProfileSnapshot(user: UserProfile) {
+        mutableSessionState.value = SessionState.SignedIn(user)
+    }
+
+    /** The shared client already cleared both encrypted envelopes and the active Room principal. */
+    fun adoptSignedOutSnapshot() {
+        mutableSessionState.value = SessionState.SignedOut
+    }
+
+    fun publicPostUrl(postId: String): String = "$baseUrl/post/${Uri.encode(postId)}"
+
     suspend fun restoreSession(): UserProfile? {
-        if (!enabled) {
-            mutableSessionState.value = SessionState.SignedOut
-            return null
-        }
-        val cachedUser = withContext(Dispatchers.IO) { accountDao.active()?.toProfile() }
-        val storedSession = readStoredSession()
-        if (storedSession == null) {
-            withContext(Dispatchers.IO) { accountDao.deactivateAll() }
-            mutableSessionState.value = SessionState.SignedOut
-            return null
-        }
-        // Cached identity is display state, not authorization. It lets Room-backed
-        // content render immediately while token/profile validation stays in the
-        // background. Only a definitive 401 is allowed to clear it.
-        cachedUser?.let { mutableSessionState.value = SessionState.SignedIn(it) }
-        return try {
-            currentUser().also { mutableSessionState.value = SessionState.SignedIn(it) }
-        } catch (error: BackendHttpException) {
-            if (error.status == 401) {
-                clearStoredSession()
-                withContext(Dispatchers.IO) { accountDao.deactivateAll() }
-                mutableSessionState.value = SessionState.SignedOut
-                null
-            } else {
-                cachedUser ?: throw error
-            }
-        } catch (error: Throwable) {
-            // Offline, timeout, and 5xx keep the last locally authenticated user.
-            cachedUser ?: throw error
-        }
+        val restored = sharedCall { sharedClient.restoreSession() }
+        mutableSessionState.value = restored?.let { SessionState.SignedIn(it) } ?: SessionState.SignedOut
+        return restored
     }
 
     suspend fun register(username: String, password: String, displayName: String): UserProfile =
-        authenticate(
-            "/v1/auth/register",
-            buildJsonObject {
-                put("username", username.trim())
-                put("password", password)
-                put("displayName", displayName.trim())
-            },
-        )
+        sharedCall { sharedClient.register(username, password, displayName) }
+            .also(::adoptProfileSnapshot)
 
     suspend fun login(username: String, password: String): UserProfile =
-        authenticate(
-            "/v1/auth/login",
-            buildJsonObject {
-                put("username", username.trim())
-                put("password", password)
-            },
-        )
+        sharedCall { sharedClient.login(username, password) }
+            .also(::adoptProfileSnapshot)
 
     suspend fun logout() {
         try {
-            if (readStoredSession() != null) requestJson("POST", "/v1/auth/logout", requireAuthentication = true)
+            sharedCall { sharedClient.logout() }
         } finally {
-            clearStoredSession()
-            withContext(Dispatchers.IO) { accountDao.deactivateAll() }
             mutableSessionState.value = SessionState.SignedOut
         }
     }
 
     suspend fun currentUser(): UserProfile {
-        val response = requestJson("GET", "/v1/me", requireAuthentication = true)
-        return decodeUser(response).also { user ->
-            cacheActiveUser(user)
-            mutableSessionState.value = SessionState.SignedIn(user)
-        }
+        return sharedCall { sharedClient.currentUser() }.also(::adoptProfileSnapshot)
     }
 
-    suspend fun user(username: String): UserProfile = decodeUser(
-        requestJson("GET", "/v1/users/${username.trim().removePrefix("u/").lowercase()}"),
-    )
+    suspend fun user(username: String): UserProfile = sharedCall { sharedClient.user(username) }
 
     suspend fun updateProfile(
         displayName: String,
@@ -140,23 +118,9 @@ class BackendClient(context: Context) {
         avatarMediaId: String?,
         updateAvatar: Boolean,
     ): UserProfile {
-        val response = requestJson(
-            "PATCH",
-            "/v1/me",
-            buildJsonObject {
-                put("displayName", displayName.trim())
-                put("bio", bio.trim())
-                if (updateAvatar) {
-                    if (avatarMediaId == null) put("avatarMediaId", JsonNull)
-                    else put("avatarMediaId", avatarMediaId)
-                }
-            },
-            requireAuthentication = true,
-        )
-        return decodeUser(response).also { user ->
-            cacheActiveUser(user)
-            mutableSessionState.value = SessionState.SignedIn(user)
-        }
+        return sharedCall {
+            sharedClient.updateProfile(displayName, bio, avatarMediaId, updateAvatar)
+        }.also(::adoptProfileSnapshot)
     }
 
     suspend fun requestJson(
@@ -165,31 +129,16 @@ class BackendClient(context: Context) {
         body: JsonElement? = null,
         requireAuthentication: Boolean = false,
     ): JsonElement {
-        check(enabled) { "READTHAT_API_BASE_URL must be an HTTPS URL" }
-        var session = authenticatedSession()
-        if (requireAuthentication && session == null) {
-            throw BackendHttpException(401, "The demo backend account is not configured or could not sign in")
-        }
-        return try {
-            rawJson(method, path, body, session?.accessToken)
-        } catch (error: BackendHttpException) {
-            if (error.status != 401 || session == null) throw error
-            session = authMutex.withLock { refreshOrLogin(session, force = true) }
-            if (requireAuthentication && session == null) throw error
-            rawJson(method, path, body, session?.accessToken)
-        }
+        return sharedCall { sharedClient.requestJson(method, path, body, requireAuthentication) }
     }
 
     suspend fun requestConditionalJson(path: String, validator: String?): BackendConditionalResponse {
-        check(enabled) { "READTHAT_API_BASE_URL must be an HTTPS URL" }
-        var session = authenticatedSession()
-            ?: throw BackendHttpException(401, "Sign in to continue")
-        return try {
-            rawConditionalJson(path, validator, session.accessToken)
-        } catch (error: BackendHttpException) {
-            if (error.status != 401) throw error
-            session = authMutex.withLock { refreshOrLogin(session, force = true) } ?: throw error
-            rawConditionalJson(path, validator, session.accessToken)
+        return when (val response = sharedCall { sharedClient.requestConditionalJson(path, validator) }) {
+            ReadThatConditionalResponse.NotModified -> BackendConditionalResponse.NotModified
+            is ReadThatConditionalResponse.Body -> BackendConditionalResponse.Body(
+                response.body,
+                response.validator,
+            )
         }
     }
 
@@ -200,17 +149,7 @@ class BackendClient(context: Context) {
         contentType: String,
         headers: Map<String, String> = emptyMap(),
     ): JsonElement {
-        check(enabled) { "READTHAT_API_BASE_URL must be an HTTPS URL" }
-        var session = authenticatedSession()
-            ?: throw BackendHttpException(401, "Sign in to continue")
-        return try {
-            rawBytes(method, path, bytes, contentType, headers, session.accessToken)
-        } catch (error: BackendHttpException) {
-            if (error.status != 401) throw error
-            session = authMutex.withLock { refreshOrLogin(session, force = true) }
-                ?: throw error
-            rawBytes(method, path, bytes, contentType, headers, session.accessToken)
-        }
+        return sharedCall { sharedClient.requestBytes(method, path, bytes, contentType, headers) }
     }
 
     /**
@@ -245,13 +184,7 @@ class BackendClient(context: Context) {
      * but no user/account/device/content identifiers.
      */
     suspend fun sendPerformanceBatch(batch: PerformanceBatch) {
-        check(enabled) { "READTHAT_API_BASE_URL must be an HTTPS URL" }
-        rawJson(
-            method = "POST",
-            path = "/v1/telemetry/performance",
-            body = PerformanceWireFormat.encode(batch),
-            accessToken = null,
-        )
+        sharedCall { sharedClient.sendPerformanceBatch(batch) }
     }
 
     /**
@@ -263,14 +196,13 @@ class BackendClient(context: Context) {
         batch: ProductAnalyticsBatch,
         expectedAccountId: String?,
     ) {
-        check(enabled) { "READTHAT_API_BASE_URL must be an HTTPS URL" }
-        val token = productAnalyticsAccessToken(expectedAccountId)
-        rawJson(
-            method = "POST",
-            path = "/v1/telemetry/product",
-            body = ProductAnalyticsWireFormat.encode(batch),
-            accessToken = token,
-        )
+        sharedCall { sharedClient.sendProductAnalyticsBatch(batch, expectedAccountId) }
+    }
+
+    private suspend fun <T> sharedCall(block: suspend () -> T): T = try {
+        block()
+    } catch (error: ReadThatHttpException) {
+        throw BackendHttpException(error.status, error.message ?: "Backend request failed")
     }
 
     private suspend fun productAnalyticsAccessToken(expectedAccountId: String?): String? {

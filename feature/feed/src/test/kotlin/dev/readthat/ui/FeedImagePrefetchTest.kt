@@ -4,6 +4,8 @@ import dev.readthat.domain.AdMediaItemUi
 import dev.readthat.domain.AdMediaKind
 import dev.readthat.domain.CellUi
 import dev.readthat.domain.ImageMediaUi
+import dev.readthat.feed.ui.feedMediaPrefetchCatalog
+import dev.readthat.shared.feedImageCacheKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -42,12 +44,14 @@ class FeedImagePrefetchTest {
 
         assertEquals(
             listOf(
-                FeedImageEntry(0, "https://example.test/still.jpg", "image:still"),
-                FeedImageEntry(1, "https://example.test/one.jpg", "image:one"),
-                FeedImageEntry(1, "https://example.test/two.jpg", "image:two"),
-                FeedImageEntry(2, "https://example.test/ad.jpg", "creative-image"),
+                Triple(0, "https://example.test/still.jpg", "image:still"),
+                Triple(1, "https://example.test/one.jpg", "image:one"),
+                Triple(1, "https://example.test/two.jpg", "image:two"),
+                Triple(2, "https://example.test/ad.jpg", "creative-image"),
             ),
-            feedImageEntries(items),
+            feedMediaPrefetchCatalog(items).stillImages.map {
+                Triple(it.cellIndex, it.url, it.cacheKey)
+            },
         )
     }
 

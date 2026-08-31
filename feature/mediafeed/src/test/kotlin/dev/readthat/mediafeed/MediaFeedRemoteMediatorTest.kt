@@ -5,7 +5,7 @@ import androidx.paging.LoadType
 import androidx.paging.PagingConfig
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.mediafeed.data.MediaFeedRemoteMediator
 import dev.readthat.mediafeed.data.MediaFeedRemoteSource

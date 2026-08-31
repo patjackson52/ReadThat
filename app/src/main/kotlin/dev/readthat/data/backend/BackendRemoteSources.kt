@@ -25,6 +25,7 @@ import dev.readthat.observability.PerformanceSurface
 import dev.readthat.observability.PerformanceTelemetry
 import dev.readthat.observability.PerformanceUnit
 import dev.readthat.observability.performanceTimer
+import dev.readthat.shared.firstFrameVideoPreviewUrl
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
@@ -265,7 +266,7 @@ internal fun WireGroup.toMediaFeedItemOrNull(): MediaFeedItem? {
             altText = video.altText,
             hlsUrl = video.hlsUrl,
             dashUrl = video.dashUrl,
-            posterUrl = video.posterUrl,
+            posterUrl = firstFrameVideoPreviewUrl(video.posterUrl),
             fallbackUrl = video.fallbackUrl ?: video.url,
             deliveryStatus = video.deliveryStatus,
             processingProgress = video.processingProgress,
@@ -451,7 +452,7 @@ object BackendGraph {
     fun repository(context: Context): BackendRepository = repository ?: synchronized(this) {
         repository ?: BackendRepository(
             sharedClient(context),
-            dev.readthat.data.db.AppDatabase.get(context.applicationContext),
+            dev.readthat.data.db.AndroidDatabaseProvider.get(context.applicationContext),
         ).also { repository = it }
     }
 
@@ -665,7 +666,7 @@ private data class ApiMedia(
         altText = altText,
         hlsUrl = hlsUrl,
         dashUrl = dashUrl,
-        posterUrl = posterUrl,
+        posterUrl = firstFrameVideoPreviewUrl(posterUrl),
         fallbackUrl = fallbackUrl ?: url,
         deliveryStatus = deliveryStatus,
         processingProgress = processingProgress,

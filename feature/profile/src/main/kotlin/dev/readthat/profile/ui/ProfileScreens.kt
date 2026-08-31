@@ -59,7 +59,7 @@ private val ReadThatOrange = Color(0xFFFF4500)
 private val ReadThatNavy = Color(0xFF0B1416)
 
 @Composable
-fun ProfileScreen(
+fun LegacyProfileScreen(
     user: UserProfile,
     onEdit: () -> Unit,
     onSettings: () -> Unit,
@@ -130,7 +130,7 @@ fun ProfileScreen(
 }
 
 @Composable
-fun PublicProfileScreen(user: UserProfile, onBack: () -> Unit) {
+fun LegacyPublicProfileScreen(user: UserProfile, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
@@ -175,7 +175,7 @@ fun PublicProfileScreen(user: UserProfile, onBack: () -> Unit) {
 }
 
 @Composable
-fun EditProfileScreen(
+fun LegacyEditProfileScreen(
     user: UserProfile,
     saving: Boolean,
     onBack: () -> Unit,

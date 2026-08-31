@@ -10,17 +10,20 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:media"))
+    implementation(project(":core:image-ui"))
+    implementation(project(":core:media-ui"))
     implementation(project(":core:model"))
     implementation(project(":core:post"))
     implementation(project(":core:observability"))
+    implementation(project(":core:client"))
     implementation(project(":core:ui"))
+    // Public PostDetailScreen compatibility aliases expose the shared detail contracts.
+    api(project(":feature:detail-ui"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation(libs.compose.foundation)
     implementation(libs.compose.icons.extended)
-    implementation(libs.coil.compose)
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
     implementation(libs.lifecycle.viewmodel.ktx)

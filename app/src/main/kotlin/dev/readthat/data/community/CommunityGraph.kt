@@ -5,6 +5,7 @@ import dev.readthat.communities.data.CommunityRepository
 import dev.readthat.data.backend.BackendGraph
 import dev.readthat.data.backend.HttpCommunityDrawerRemoteSource
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.sync.CommunityVisitSyncScheduler
 import dev.readthat.data.sync.SubredditCreationScheduler
 import java.util.concurrent.ConcurrentHashMap
@@ -19,7 +20,7 @@ object CommunityGraph {
     fun repository(context: Context, accountId: String): CommunityRepository =
         repositories[accountId] ?: synchronized(this) {
             repositories[accountId] ?: CommunityRepository(
-                db = AppDatabase.get(context.applicationContext),
+                db = AndroidDatabaseProvider.get(context.applicationContext),
                 remote = HttpCommunityDrawerRemoteSource(BackendGraph.client(context)),
                 accountId = accountId,
                 scope = applicationScope,

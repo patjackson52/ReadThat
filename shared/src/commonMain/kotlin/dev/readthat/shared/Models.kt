@@ -48,10 +48,10 @@ sealed interface AuthAction {
 }
 
 fun reduceAuth(state: AuthForm, action: AuthAction): AuthForm = when (action) {
-    is AuthAction.SetMode -> state.copy(mode = action.mode, error = null, submitting = false)
-    is AuthAction.SetUsername -> state.copy(username = action.value, error = null)
-    is AuthAction.SetDisplayName -> state.copy(displayName = action.value, error = null)
-    is AuthAction.SetPassword -> state.copy(password = action.value, error = null)
+    is AuthAction.SetMode -> if (state.submitting) state else state.copy(mode = action.mode, error = null)
+    is AuthAction.SetUsername -> if (state.submitting) state else state.copy(username = action.value, error = null)
+    is AuthAction.SetDisplayName -> if (state.submitting) state else state.copy(displayName = action.value, error = null)
+    is AuthAction.SetPassword -> if (state.submitting) state else state.copy(password = action.value, error = null)
     AuthAction.TogglePasswordVisibility -> state.copy(passwordVisible = !state.passwordVisible)
     AuthAction.Submit -> if (state.canSubmit) state.copy(submitting = true, error = null) else state
     is AuthAction.Failed -> state.copy(submitting = false, error = action.message)
@@ -97,6 +97,7 @@ data class PostFlair(
     val textColor: String,
 )
 
+@Serializable
 data class LocalPostMedia(
     val name: String,
     val mimeType: String,
@@ -179,6 +180,7 @@ data class CreatedPost(
 )
 
 /** Client-known post detail contract shared across feed and comments features. */
+@Serializable
 data class PostHeader(
     val postId: String,
     val title: String,
@@ -196,6 +198,7 @@ data class PostHeader(
     val flair: PostFlair? = null,
 )
 
+@Serializable
 data class PostMedia(
     val placeholderColor: Long,
     val aspectRatio: Float,
@@ -222,6 +225,7 @@ data class PostMedia(
  * Ephemeral navigation handoff. It gives the detail destination final-shaped
  * hero pixels before its API/Room header arrives; it is never persisted or sent.
  */
+@Serializable
 data class PostTransitionPreview(
     val postId: String,
     val title: String,
@@ -247,6 +251,7 @@ data class VoteSnapshot(val score: Int, val viewerVote: Int) {
     }
 }
 
+@Serializable
 data class AppSettings(
     val darkTheme: Boolean = false,
     val compactPosts: Boolean = false,

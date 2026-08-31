@@ -12,30 +12,25 @@ import coil3.network.NetworkFetcher
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatProductAnalyticsConfiguration
+import dev.readthat.client.AndroidReadThatProductAnalyticsRegistry
+import dev.readthat.image.ui.clearPlatformImageMemoryCache
 import dev.readthat.networking.UnifiedCoilNetworkClient
 import dev.readthat.networking.UnifiedTransport
 import dev.readthat.observability.PerformanceTelemetry
-import dev.readthat.observability.ProductAnalytics
 import dev.readthat.observability.performanceTimer
 import dev.readthat.playback.VideoPlaybackCoordinator
-import dev.readthat.data.backend.BackendGraph
 import dev.readthat.data.sync.FeedSyncScheduler
 import dev.readthat.observability.AndroidPerformanceRecorder
 import dev.readthat.observability.AndroidPerformanceSession
-import dev.readthat.observability.AndroidProductAnalyticsRecorder
-import dev.readthat.shared.SessionState
+import dev.readthat.observability.ProductAnalyticsUploadScheduler
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 
 class ReadThatApplication : Application(), SingletonImageLoader.Factory {
     private val processHomeTimer = performanceTimer()
     private val firstActivity = AtomicBoolean(true)
-    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     fun newPerformanceSession(): AndroidPerformanceSession {
         val cold = firstActivity.getAndSet(false)
@@ -57,36 +52,39 @@ class ReadThatApplication : Application(), SingletonImageLoader.Factory {
             ),
         )
         PerformanceTelemetry.install(AndroidPerformanceRecorder(this))
-        val backend = BackendGraph.repository(this)
-        val productAnalytics = AndroidProductAnalyticsRecorder(
+        val productAnalytics = AndroidReadThatProductAnalyticsRegistry.get(
             this,
-            accountId = { backend.activeAccountId },
-            identityReady = { backend.session.value !is SessionState.Restoring },
+            AndroidReadThatProductAnalyticsConfiguration(
+                client = AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
+                buildType = BuildConfig.BUILD_TYPE,
+            ),
         )
-        ProductAnalytics.install(productAnalytics)
-        ProcessLifecycleOwner.get().lifecycle.addObserver(productAnalytics)
+        ProductAnalyticsUploadScheduler.initialize(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
+                // Shared Compose owns its own lifecycle bridge; the mature shell needs this
+                // adapter until its root navigation host is migrated.
+                if (!BuildConfig.READTHAT_USE_SHARED_APP) productAnalytics.onForeground()
                 VideoPlaybackCoordinator.setAppForeground(true)
             }
 
             override fun onStop(owner: LifecycleOwner) {
+                if (!BuildConfig.READTHAT_USE_SHARED_APP) productAnalytics.onBackground()
                 VideoPlaybackCoordinator.setAppForeground(false)
             }
         })
-        applicationScope.launch {
-            backend.session.collect { state ->
-                // Restoring is not an identity transition. Waiting avoids
-                // rotating a recovered signed-in session into a guest session.
-                if (state !is SessionState.Restoring) productAnalytics.identityChanged()
-            }
-        }
         FeedSyncScheduler.initialize(this)
     }
 
     @Suppress("DEPRECATION")
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        if (level >= TRIM_MEMORY_RUNNING_LOW) clearPlatformImageMemoryCache()
         // UI_HIDDEN can be delivered during the brief no-Activity window of a
         // configuration change. Releasing the process player there races the
         // replacement PlayerView and leaves its surface black until the next
@@ -95,6 +93,12 @@ class ReadThatApplication : Application(), SingletonImageLoader.Factory {
         if (level >= TRIM_MEMORY_BACKGROUND || level == TRIM_MEMORY_RUNNING_CRITICAL) {
             VideoPlaybackCoordinator.trimMemory()
         }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        clearPlatformImageMemoryCache()
+        VideoPlaybackCoordinator.trimMemory()
     }
 
     @OptIn(ExperimentalCoilApi::class)

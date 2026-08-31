@@ -15,10 +15,12 @@ import dev.readthat.observability.PerformanceBatch
 import dev.readthat.observability.PerformanceEvent
 import dev.readthat.observability.PerformanceRecorder
 import dev.readthat.BuildConfig
-import dev.readthat.data.backend.BackendGraph
-import dev.readthat.data.backend.BackendHttpException
-import dev.readthat.data.db.AppDatabase
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatClientRegistry
+import dev.readthat.client.ReadThatHttpException
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.PendingPerformanceEventEntity
+import dev.readthat.observability.sanitizedForExport
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
@@ -48,7 +50,7 @@ class AndroidPerformanceRecorder(context: Context) : PerformanceRecorder {
         TelemetryUploadScheduler.initialize(appContext)
         scope.launch {
             for (event in events) {
-                val dao = AppDatabase.get(appContext).performanceOutboxDao()
+                val dao = AndroidDatabaseProvider.get(appContext).performanceOutboxDao()
                 dao.insert(PendingPerformanceEventEntity(
                     id = "$processSessionId:${sequence.incrementAndGet()}",
                     payloadJson = json.encodeToString(event),
@@ -106,43 +108,58 @@ class PerformanceUploadWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
-    private val json = Json { ignoreUnknownKeys = false; explicitNulls = false }
+    private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     override suspend fun doWork(): Result {
-        val dao = AppDatabase.get(applicationContext).performanceOutboxDao()
+        val dao = AndroidDatabaseProvider.get(applicationContext).performanceOutboxDao()
         return try {
+            val client = AndroidReadThatClientRegistry.get(
+                applicationContext,
+                AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
+            ).client
             repeat(MAX_BATCHES_PER_RUN) {
                 val pending = dao.oldest(BATCH_SIZE)
                 if (pending.isEmpty()) return Result.success()
                 val decoded = pending.mapNotNull { row ->
-                    runCatching { json.decodeFromString<PerformanceEvent>(row.payloadJson) }.getOrNull()
+                    runCatching { json.decodeFromString<PerformanceEvent>(row.payloadJson) }
+                        .getOrNull()
+                        ?.sanitizedForExport()
                 }
                 if (decoded.isEmpty()) {
                     dao.delete(pending.map { it.id })
                     return@repeat
                 }
-                BackendGraph.client(applicationContext).sendPerformanceBatch(PerformanceBatch(
-                    platform = "android",
-                    appVersion = BuildConfig.VERSION_NAME,
-                    buildType = BuildConfig.BUILD_TYPE,
-                    sessionId = pending.first().id.substringBefore(':'),
-                    events = decoded,
-                ))
-                dao.delete(pending.map { it.id })
+                try {
+                    client.sendPerformanceBatch(PerformanceBatch(
+                        platform = "android",
+                        appVersion = BuildConfig.VERSION_NAME,
+                        buildType = BuildConfig.BUILD_TYPE,
+                        // The mature recorder stores `<session UUID>:<sequence>`, while the
+                        // shared KMP exporter stores `metric:<event UUID>`. Both intentionally
+                        // share this Room outbox so rollback and migration cannot strand data.
+                        sessionId = performanceUploadSessionId(pending.first().id),
+                        events = decoded,
+                    ))
+                    dao.delete(pending.map { it.id })
+                } catch (error: ReadThatHttpException) {
+                    if (!isPermanentTelemetryHttpFailure(error.status)) throw error
+                    // A persisted pre-migration batch cannot become valid by retrying. Drop only
+                    // the attempted rows, then continue draining newer schema-compatible events.
+                    dao.delete(pending.map { it.id })
+                }
             }
-            if (dao.count() > 0) TelemetryUploadScheduler.enqueue(applicationContext)
-            Result.success()
+            // Retrying the current unique work is reliable; enqueueing another KEEP request while
+            // this one is RUNNING can be ignored by WorkManager.
+            if (dao.count() > 0) Result.retry() else Result.success()
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (error: BackendHttpException) {
-            // A 4xx means the local schema is incompatible. Retrying a poison
-            // batch forever burns battery and never makes it valid.
-            if (error.status in 400..499 && error.status != 408 && error.status != 429) {
-                dao.oldest(BATCH_SIZE).takeIf { it.isNotEmpty() }?.let { dao.delete(it.map { row -> row.id }) }
-                Result.failure()
-            } else {
-                Result.retry()
-            }
+        } catch (_: ReadThatHttpException) {
+            Result.retry()
         } catch (_: Throwable) {
             Result.retry()
         }
@@ -153,3 +170,19 @@ class PerformanceUploadWorker(
         const val MAX_BATCHES_PER_RUN = 4
     }
 }
+
+internal fun isPermanentTelemetryHttpFailure(status: Int): Boolean =
+    status in 400..499 && status != 408 && status != 429
+
+/** Returns an anonymous UUID accepted by the telemetry contract for either outbox producer. */
+internal fun performanceUploadSessionId(
+    pendingId: String,
+    fallbackSessionId: String = UUID.randomUUID().toString(),
+): String {
+    val candidates = listOf(pendingId.substringBefore(':'), pendingId.substringAfter(':', ""))
+    return candidates.firstOrNull(::isCanonicalUuid) ?: fallbackSessionId
+}
+
+private fun isCanonicalUuid(value: String): Boolean =
+    runCatching { UUID.fromString(value).toString().equals(value, ignoreCase = true) }
+        .getOrDefault(false)

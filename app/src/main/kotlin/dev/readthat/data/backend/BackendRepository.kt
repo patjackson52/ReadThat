@@ -3,6 +3,7 @@ package dev.readthat.data.backend
 import android.util.LruCache
 import dev.readthat.data.db.CacheScope
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.SubredditEntity
 import dev.readthat.shared.CreatedPost
 import dev.readthat.shared.PostKind
@@ -39,6 +40,8 @@ class BackendRepository(
     val activeAccountId: String?
         get() = (session.value as? SessionState.SignedIn)?.user?.id
 
+    fun publicPostUrl(postId: String): String = client.publicPostUrl(postId)
+
     suspend fun restoreSession(): UserProfile? = client.restoreSession()
     suspend fun register(username: String, password: String, displayName: String): UserProfile =
         client.register(username, password, displayName)
@@ -56,6 +59,9 @@ class BackendRepository(
         avatarMediaId: String?,
         updateAvatar: Boolean,
     ): UserProfile = client.updateProfile(displayName, bio, avatarMediaId, updateAvatar)
+
+    fun adoptProfileSnapshot(user: UserProfile) = client.adoptProfileSnapshot(user)
+    fun adoptSignedOutSnapshot() = client.adoptSignedOutSnapshot()
 
     suspend fun createSubreddit(
         name: String,

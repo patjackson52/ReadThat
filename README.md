@@ -1,20 +1,22 @@
 # ReadThat
 
-ReadThat is a playful, independent Reddit-inspired Android client and React PWA
-backed by a Cloudflare Worker. The feed is server-driven, while post detail and
-recursive comments use typed domain models. Configure the Android client with
-the `READTHAT_API_BASE_URL` Gradle property; backend setup lives in
+ReadThat is a playful, independent Reddit-inspired Android, iOS, and React PWA
+client backed by a Cloudflare Worker. Android and iOS share KMP models, Room 3,
+repositories, lifecycle ViewModels, networking, cache policy, telemetry, and a
+Compose Multiplatform surface. The feed is server-driven, while post detail and
+recursive comments use typed domain models. Configure either mobile client with
+the same `READTHAT_API_BASE_URL`; backend setup lives in
 [`backend/README.md`](backend/README.md).
 
 The product surface now includes onboarding, registration, login/logout,
 encrypted session refresh, profile viewing/editing, settings, offline-first
 community creation, the personalized feed, text/image-gallery/video/link post creation,
 full community details with offline membership, full post detail, root and deeply
-nested comments, three-state voting, resharing, and Android sharing. It is an
+nested comments, three-state voting, resharing, and native Android/iOS sharing. It is an
 independent implementation informed by Reddit's public engineering writing and
 visual inspection of the public Reddit Android UI.
 
-The Android client also includes `MediaFeed`: tapping normal-feed media opens
+The shared Android and iOS surface also includes `MediaFeed`: tapping normal-feed media opens
 the exact item in a spinner-free, vertically snapping image/video pager with
 autoplay, pinch zoom, media-only chrome, profile navigation, and the reused post
 detail/comments composition in a bottom sheet. Its complete contract is in
@@ -31,6 +33,9 @@ consistency model are in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Metric
 boundaries, percentile SLOs, sampled Cloudflare queries, privacy rules, and the
 incident runbook are in
 [`docs/PERFORMANCE_OBSERVABILITY.md`](docs/PERFORMANCE_OBSERVABILITY.md).
+Canonical post/comment links, Android App Links, iOS Universal Links, browser
+fallback behavior, and release-signing setup are documented in
+[`docs/DEEPLINKS.md`](docs/DEEPLINKS.md).
 
 Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet names the concepts to focus on: *"Architectural patterns, futureproofing, API design, tradeoffs, **model layers, flattening**."* This repo is those six things, compiled and tested.
 
@@ -42,14 +47,16 @@ Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet 
 
 | | |
 |---|---|
-| Build | ✅ `assembleDebug` |
-| Tests | ✅ Android feature suites, Android+iOS+JS KMP suites, Android lint, Room creation/drawer outbox tests, an on-device API/image/video transport probe, and 24 Workers-runtime integration scenarios |
+| Build | ✅ Android `assembleDebug` and iOS simulator Xcode build |
+| Tests | ✅ Android feature suites, Android+iOS KMP suites, Room 3/outbox tests, Android lint, an on-device API/image/video transport probe, and Workers-runtime integration scenarios |
 | Toolchain | AGP 9.3.2 · Kotlin 2.3.21 · Gradle 9.5 · JDK 17 |
 | SDK | **compileSdk/targetSdk 37**, minSdk 26 |
 | UI | Jetpack Compose (BOM 2026.08.00), Material 3 |
 | Web | React 19 + Vite PWA; cursor paging, IndexedDB cache/outbox, native view transitions, adaptive HLS, bounded segment prefetch |
-| Paging | **Paging 3.5.1 + `RemoteMediator` over Room 2.8.4** — the DB is the paging source of truth |
-| KMP | `:core:model` compiles/tests for Android, iOS device/simulator, and browser JS |
+| Persistence | **Room 3.0.2 KMP + SQLite 2.7.0** — Room is the structured-data source of truth on Android and iOS |
+| Paging | **Paging 3.5.1 + `RemoteMediator` over Room 3** on Android; shared Room-first flows on iOS |
+| KMP | `:core:model`, `:core:data`, `:core:network`, `:core:client`, `:core:observability`, `:feature:app-ui`, and `:composeApp` compile for Android and iOS |
+| iOS | Compose Multiplatform UI, Keychain sessions, one HTTP/3-capable `URLSession`, AVPlayer HLS, PhotosUI, native sharing, and an AVAsset offline-download shim |
 | On-device | ✅ registration, live SDUI feed, post detail/comments, create/profile/settings verified on a physical Pixel 10 Pro |
 | Source | Android/Kotlin client + React/TypeScript web client + TypeScript Cloudflare Worker |
 | Backend | ✅ One Worker origin for the PWA/API + D1 + R2 staging + Durable Objects + Images + Stream; public configuration uses safe placeholder resource IDs |
@@ -64,11 +71,19 @@ Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet 
 ./gradlew :feature:mediafeed:testDebugUnitTest # media Room/Paging/cursor concurrency
 ./gradlew :core:post:testDebugUnitTest         # shared optimistic vote/outbox races
 ./gradlew :core:model:allTests                 # Android, iOS, and JS
+./gradlew :core:client:allTests                # shared client contracts on Android and iOS
+./gradlew :core:data:testAndroidHostTest       # Room 3 DAO/outbox behavior
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 ./gradlew :flows:testDebugUnitTest             # standalone Flow patterns
 ./gradlew :app:lintDebug :feature:feed:lintDebug :feature:comments:lintDebug \
-  :core:data:lintDebug :core:network:lintDebug :core:media:lintDebug
+  :core:media:lintDebug # app lint also analyzes its Android-KMP dependency models
 ./gradlew :app:assembleDebug                    # APK
 ./gradlew installDebug               # to a device/emulator
+
+cd iosApp
+xcodegen generate
+xcodebuild -project ReadThat.xcodeproj -scheme ReadThat \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 
 cd backend
 npm test && npm run check             # Worker integration tests + TypeScript
@@ -101,8 +116,16 @@ caches images, and applies a quota-aware LRU only to immutable video segments.
 | **`:feature:community-detail`** | Typed community chrome, avatar/rules/membership state, Room-first UDF, and a coalescing join/leave outbox above the reused SDUI ranked feed |
 | **`:feature:mediafeed`** | Typed image/gallery/video Pager, exact-anchor Room/Paging, horizontal gallery + vertical post snapping, zoom/chrome UI, and bounded prefetch |
 | **`:core:model`** | KMP auth/post/profile/settings/video-policy contracts and pure reducers |
-| **`:core:data`** | Shared Room schema/DAOs for account-scoped feed/profiles/subreddits, settings, and durable outboxes |
-| **`:core:network`** | One Android API/Coil/Media3 transport with HTTP/3 and pooled HTTP/2 fallback |
+| **`:core:data`** | Room 3 KMP schema/DAOs for account-scoped feed/profiles/subreddits, settings, document caches, and durable outboxes |
+| **`:core:network`** | KMP request/cache contract; one Android HttpEngine/OkHttp pool or one iOS URLSession shared by API, images, and previews |
+| **`:core:client`** | Shared authenticated API, Room-first repositories, lifecycle ViewModel, mutation replay, and telemetry exporter |
+| **`:core:media-acquisition`** | Shared photo/video/avatar selection policy plus bounded app-private Android staging |
+| **`:core:media-acquisition-ui`** | KMP picker/camera request lifecycle with Android Activity Result and iOS PhotosUI bridge implementations |
+| **`:core:sharing` / `:core:sharing-ui`** | Validated canonical share payload policy plus one KMP system-share capability with Android chooser and iOS host implementations |
+| **`:feature:ad-ui`** | Shared promoted-detail/media/telemetry UI plus HTTPS-only native WebView/WKWebView landing implementations |
+| **`:feature:app-ui`** | KMP application coordinator: session shell, lifecycle/deep-link handling, destination routing/system-Back policy, bounded per-destination saveable UI state, and composition of independently reusable feature screens |
+| **`:composeApp`** | Thin framework/binary host: Android process graph + saved-state adapter and iOS UIViewController entrypoint; no feature rendering |
+| **`:iosApp`** | SwiftUI/Xcode lifecycle host plus PhotosUI, share sheet, Keychain/AVPlayer integrations exported by the KMP framework |
 | **`:core:media`** | Media3 playback, ABR/data-saver policy, stable segment cache identity |
 | **`:core:post`** | Shared account-scoped optimistic post state and coalescing durable vote outbox |
 | **`:core:observability`** | KMP Android/iOS/browser performance event contract and monotonic timers |
@@ -352,9 +375,13 @@ Named so you can answer "what would you add next?" rather than being caught out:
   injection. A larger product can generate the same graph with Dagger/Hilt
   without moving ownership back into feature code.
 - **No screenshot tests.** Converters being pure makes them cheap to add (Paparazzi at Reddit, Roborazzi elsewhere).
-- **KMP UI is not shared.** The portable module intentionally starts with
-  domain state and reducers; Android remains Jetpack Compose, leaving room for
-  Compose Multiplatform or native SwiftUI/web renderers later.
+- **The mature Android root is retained as a rollback reference.** The default
+  Android build launches the same KMP graph and `:feature:app-ui` surface as iOS
+  through the thin `:composeApp` host. Android-only Media3 engines, WorkManager,
+  system capabilities, and process lifecycle adapters remain native. Build with
+  `-PREADTHAT_USE_SHARED_APP=false` to exercise the compiled mature reference.
+  The shared secure store migrates and mirrors the legacy Keystore envelope, so
+  an explicit rollback build retains a usable refreshed session.
 - **No real diffing engine.** `LazyColumn` keys do the work here; Reddit's iOS side has an explicit snapshot-diffing stage.
 
 The backend, API contract, Cloudflare topology, consistency model, and live-app

@@ -1,6 +1,6 @@
 package dev.readthat.core.post
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.observability.PerformanceEvent
 import dev.readthat.observability.PerformanceMetric
 import dev.readthat.observability.PerformanceOutcome
@@ -78,7 +78,7 @@ class PostInteractionRepository(
                 viewerVote = nextVote,
             )
             val mutationId = UUID.randomUUID().toString()
-            db.withTransaction {
+            db.withWriteTransaction {
                 dao.putState(ItemStateEntity(
                     accountId = account,
                     itemId = postId,

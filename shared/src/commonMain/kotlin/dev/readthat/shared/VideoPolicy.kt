@@ -16,6 +16,21 @@ data class AdaptiveVideoAsset(
 enum class ConnectionKind { Offline, Metered, Unmetered }
 enum class DeviceTier { LowMemory, Standard, HighEnd }
 
+/**
+ * Converts a native physical-memory fact into the shared media tier. Unknown values retain the
+ * standard policy; supported iPhones below 4 GiB get conservative decode/ABR limits, while 6 GiB
+ * and newer devices can use the high-end profile.
+ */
+fun deviceTierForPhysicalMemory(physicalMemoryBytes: Long): DeviceTier {
+    val gib = 1_024L * 1_024L * 1_024L
+    return when {
+        physicalMemoryBytes <= 0L -> DeviceTier.Standard
+        physicalMemoryBytes < 4L * gib -> DeviceTier.LowMemory
+        physicalMemoryBytes >= 6L * gib -> DeviceTier.HighEnd
+        else -> DeviceTier.Standard
+    }
+}
+
 data class VideoPlaybackPolicy(
     val autoplay: Boolean,
     val allowPrefetch: Boolean,
@@ -33,6 +48,30 @@ data class VideoPlaybackPolicy(
  */
 fun videoPosterCacheKey(mediaKey: String, posterUrl: String?): String =
     "$mediaKey:poster:v3:${posterUrl?.hashCode() ?: "missing"}"
+
+/**
+ * Cloudflare Stream thumbnails are addressable by timestamp. Normalize any Stream thumbnail to
+ * the playback start so cached/offline responses from an older backend cannot reintroduce a
+ * representative-frame-to-first-frame jump.
+ */
+fun firstFrameVideoPreviewUrl(url: String?): String? {
+    if (url.isNullOrBlank() || !url.contains("/thumbnails/thumbnail.", ignoreCase = true)) return url
+    val fragmentIndex = url.indexOf('#')
+    val withoutFragment = if (fragmentIndex >= 0) url.substring(0, fragmentIndex) else url
+    val fragment = if (fragmentIndex >= 0) url.substring(fragmentIndex) else ""
+    val queryIndex = withoutFragment.indexOf('?')
+    val path = if (queryIndex >= 0) withoutFragment.substring(0, queryIndex) else withoutFragment
+    val existing = if (queryIndex >= 0) withoutFragment.substring(queryIndex + 1) else ""
+    val parameters = existing.split('&')
+        .filter(String::isNotBlank)
+        .filterNot { it.substringBefore('=').equals("time", ignoreCase = true) }
+    return buildString {
+        append(path)
+        append("?time=0s")
+        parameters.forEach { parameter -> append('&').append(parameter) }
+        append(fragment)
+    }
+}
 
 /**
  * One deterministic policy for all clients. Platform code only supplies network,

@@ -1,19 +1,18 @@
 package dev.readthat.ui.create
 
 import android.app.Application
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.readthat.data.backend.BackendGraph
 import dev.readthat.data.community.CommunityGraph
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.PendingPostEntity
 import dev.readthat.data.sync.PostUploadScheduler
 import dev.readthat.data.sync.PendingMediaUpload
+import dev.readthat.media.acquisition.MediaAcquisitionPolicies
+import dev.readthat.media.acquisition.stageAndroidMediaSelection
 import dev.readthat.shared.CreatePostDraft
 import dev.readthat.shared.LocalPostMedia
 import dev.readthat.shared.PostKind
@@ -147,60 +146,48 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
         prepareSelectedMedia(uris, PostKind.Image, append = true)
     }
 
-    fun selectCapturedImage(bitmap: Bitmap) {
-        if (mutableDraft.value.submitting || mutableDraft.value.preparingMedia) return
-        val existing = mutableDraft.value.localMediaItems
-        if (existing.size >= MAX_PHOTOS) {
-            update { copy(error = "Choose up to $MAX_PHOTOS photos") }
+    /** Accepts the already validated durable result from the shared native acquisition seam. */
+    fun addCapturedMedia(media: LocalPostMedia) {
+        if (mutableDraft.value.submitting || mutableDraft.value.preparingMedia) {
+            File(media.localPath).delete()
             return
         }
-        update { copy(preparingMedia = true, error = null) }
-        viewModelScope.launch {
-            runCatching {
-                withContext(Dispatchers.IO) {
-                    val directory = getApplication<Application>().noBackupFilesDir
-                        .resolve("pending-uploads")
-                        .apply { mkdirs() }
-                    val destination = directory.resolve(UUID.randomUUID().toString())
-                    destination.outputStream().use { output ->
-                        require(bitmap.compress(Bitmap.CompressFormat.JPEG, 92, output)) {
-                            "Could not save the captured photo"
-                        }
-                    }
-                    PreparedMedia(
-                        name = "Photo ${System.currentTimeMillis()}.jpg",
-                        mime = "image/jpeg",
-                        localPath = destination.absolutePath,
-                        byteSize = destination.length(),
-                        metadata = MediaMetadata(bitmap.width, bitmap.height, null),
-                    )
-                }
-            }.onSuccess { prepared ->
-                if (mutableDraft.value.kind != PostKind.Image) {
-                    File(prepared.localPath).delete()
-                } else {
-                    val combined = existing + prepared.toLocalPostMedia()
-                    val first = combined.first()
-                    update {
-                        copy(
-                            localMediaName = first.name,
-                            localMediaMimeType = first.mimeType,
-                            localMediaPath = first.localPath,
-                            localMediaByteSize = first.byteSize,
-                            mediaWidth = first.width,
-                            mediaHeight = first.height,
-                            mediaDurationSeconds = first.durationSeconds,
-                            localMediaItems = combined,
-                            preparingMedia = false,
-                            error = null,
-                        )
-                    }
-                }
-            }.onFailure { error ->
-                update { copy(preparingMedia = false, error = error.message ?: "Could not save the captured photo") }
+        val existing = mutableDraft.value.localMediaItems
+        val imagePolicy = MediaAcquisitionPolicies.image
+        if (existing.size >= imagePolicy.maximumItems) {
+            File(media.localPath).delete()
+            update { copy(error = "Choose up to ${imagePolicy.maximumItems} photos") }
+            return
+        }
+        val accepted = runCatching { MediaAcquisitionPolicies.camera.validate(media) }
+            .getOrElse { error ->
+                File(media.localPath).delete()
+                update { copy(error = error.message ?: "Could not save the captured photo") }
+                return
             }
+        if (mutableDraft.value.kind != PostKind.Image) {
+            File(accepted.localPath).delete()
+            return
+        }
+        val combined = existing + accepted
+        val first = combined.first()
+        update {
+            copy(
+                localMediaName = first.name,
+                localMediaMimeType = first.mimeType,
+                localMediaPath = first.localPath,
+                localMediaByteSize = first.byteSize,
+                mediaWidth = first.width,
+                mediaHeight = first.height,
+                mediaDurationSeconds = first.durationSeconds,
+                localMediaItems = combined,
+                preparingMedia = false,
+                error = null,
+            )
         }
     }
+
+    fun reportError(message: String) = update { copy(preparingMedia = false, error = message) }
 
     fun removeMediaAt(index: Int) {
         val current = mutableDraft.value
@@ -227,17 +214,17 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
         update { copy(preparingMedia = true, error = null) }
         val existing = if (append) mutableDraft.value.localMediaItems else emptyList()
         viewModelScope.launch {
-            val prepared = mutableListOf<PreparedMedia>()
             runCatching {
-                uris.forEach { uri -> prepared += prepareMedia(uri, selectedKind) }
-                prepared.toList()
+                withContext(Dispatchers.IO) {
+                    stageAndroidMediaSelection(getApplication(), uris, selectedKind)
+                }
             }
                 .onSuccess { mediaItems ->
                     if (mutableDraft.value.kind != selectedKind) {
                         mediaItems.forEach { File(it.localPath).delete() }
                     } else {
                         if (!append) deleteDraftFiles(mutableDraft.value)
-                        val combined = existing + mediaItems.map(PreparedMedia::toLocalPostMedia)
+                        val combined = existing + mediaItems
                         val first = combined.first()
                         update {
                             copy(
@@ -256,7 +243,6 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
                     }
                 }
                 .onFailure { error ->
-                    prepared.forEach { File(it.localPath).delete() }
                     update { copy(preparingMedia = false, error = error.message ?: "Could not read the selected file") }
                 }
         }
@@ -271,7 +257,7 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
             runCatching {
                 val mutationId = UUID.randomUUID().toString()
                 val accountId = backend.activeAccountId ?: error("Sign in before creating a post")
-                val dao = AppDatabase.get(getApplication()).postOutboxDao()
+                val dao = AndroidDatabaseProvider.get(getApplication()).postOutboxDao()
                 val pendingMedia = snapshot.localMediaItems.map { media ->
                     PendingMediaUpload(
                         name = media.name,
@@ -331,77 +317,6 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
         }
     }
 
-    private suspend fun prepareMedia(uri: Uri, kind: PostKind): PreparedMedia = withContext(Dispatchers.IO) {
-        val app = getApplication<Application>()
-        val resolver = app.contentResolver
-        val mime = resolver.getType(uri) ?: error("This file type is not supported")
-        val expected = if (kind == PostKind.Image) "image/" else "video/"
-        require(mime.startsWith(expected)) { "Choose an ${expected.removeSuffix("/")} file" }
-        val selection = resolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE),
-            null,
-            null,
-            null,
-        )?.use { cursor ->
-            if (!cursor.moveToFirst()) return@use null
-            val name = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-            val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
-            val size = if (sizeIndex >= 0 && !cursor.isNull(sizeIndex)) cursor.getLong(sizeIndex) else null
-            name to size
-        }
-        val name = selection?.first ?: "Selected media"
-        val byteSize = selection?.second
-            ?: resolver.openAssetFileDescriptor(uri, "r")?.use { it.length.takeIf { length -> length >= 0 } }
-            ?: error("Could not determine the selected file size")
-        val maxBytes = if (kind == PostKind.Image) MAX_IMAGE_BYTES else MAX_VIDEO_BYTES
-        require(byteSize in 1..maxBytes) { "Choose a file smaller than ${maxBytes / (1024 * 1024)} MB" }
-
-        val metadata = readMedia(uri, kind)
-        val directory = app.noBackupFilesDir.resolve("pending-uploads").apply { mkdirs() }
-        val destination = directory.resolve(UUID.randomUUID().toString())
-        try {
-            resolver.openInputStream(uri)?.use { input ->
-                destination.outputStream().use(input::copyTo)
-            } ?: error("Could not read the selected file")
-            require(destination.length() == byteSize) { "Selected media changed while it was being prepared" }
-            PreparedMedia(name, mime, destination.absolutePath, byteSize, metadata)
-        } catch (error: Throwable) {
-            destination.delete()
-            throw error
-        }
-    }
-
-    private suspend fun readMedia(uri: Uri, kind: PostKind): MediaMetadata = withContext(Dispatchers.IO) {
-        val resolver = getApplication<Application>().contentResolver
-        if (kind == PostKind.Image) {
-            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            resolver.openInputStream(uri)?.use { stream ->
-                // Bounds-only decoding deliberately returns a null Bitmap. The
-                // stream itself is the success signal; dimensions are reported
-                // through the options object.
-                BitmapFactory.decodeStream(stream, null, bounds)
-                Unit
-            } ?: error("Could not read the selected image")
-            require(bounds.outWidth > 0 && bounds.outHeight > 0) {
-                "This image format could not be decoded"
-            }
-            MediaMetadata(bounds.outWidth.takeIf { it > 0 }, bounds.outHeight.takeIf { it > 0 }, null)
-        } else {
-            val retriever = MediaMetadataRetriever()
-            try {
-                retriever.setDataSource(getApplication(), uri)
-                val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
-                val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
-                val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
-                    ?.div(1_000)?.toInt()
-                MediaMetadata(width, height, duration)
-            } finally {
-                retriever.release()
-            }
-        }
-    }
-
     private inline fun update(block: CreatePostDraft.() -> CreatePostDraft) {
         mutableDraft.value = mutableDraft.value.block()
     }
@@ -412,33 +327,7 @@ class CreatePostViewModel(app: Application, initialSubreddit: String = "") : And
             .forEach { File(it).delete() }
     }
 
-    private data class MediaMetadata(
-        val width: Int?,
-        val height: Int?,
-        val durationSeconds: Int?,
-    )
-
-    private data class PreparedMedia(
-        val name: String,
-        val mime: String,
-        val localPath: String,
-        val byteSize: Long,
-        val metadata: MediaMetadata,
-    ) {
-        fun toLocalPostMedia() = LocalPostMedia(
-            name = name,
-            mimeType = mime,
-            localPath = localPath,
-            byteSize = byteSize,
-            width = metadata.width,
-            height = metadata.height,
-            durationSeconds = metadata.durationSeconds,
-        )
-    }
-
     private companion object {
-        const val MAX_IMAGE_BYTES = 20L * 1024 * 1024
-        const val MAX_VIDEO_BYTES = 100L * 1024 * 1024
-        const val MAX_PHOTOS = 20
+        val MAX_PHOTOS get() = MediaAcquisitionPolicies.image.maximumItems
     }
 }

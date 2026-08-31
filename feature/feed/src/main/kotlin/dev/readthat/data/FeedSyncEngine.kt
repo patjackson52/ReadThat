@@ -1,6 +1,6 @@
 package dev.readthat.data
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.data.db.CacheScope
 import dev.readthat.data.db.AppDatabase
 import dev.readthat.data.db.GroupEntity
@@ -110,7 +110,7 @@ class FeedSyncEngine(
         feedId: String,
         page: WireFeedPage,
         replace: Boolean,
-    ) = db.withTransaction {
+    ) = db.withWriteTransaction {
         if (replace) {
             dao.clearGroups(accountId, feedId)
             dao.clearRemoteKeys(accountId, feedId)

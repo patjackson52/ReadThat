@@ -47,9 +47,10 @@ class VideoAutoplaySelectionTest {
     }
 
     @Test
-    fun `poster remains until the currently selected media has rendered`() {
+    fun `first frame preview is skipped only for the rendered active source`() {
         assertFalse(retainRenderedVideoFrame(playInline = false, coordinatorHasRenderedSource = true))
         assertFalse(retainRenderedVideoFrame(playInline = true, coordinatorHasRenderedSource = false))
         assertTrue(retainRenderedVideoFrame(playInline = true, coordinatorHasRenderedSource = true))
     }
+
 }

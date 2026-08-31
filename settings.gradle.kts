@@ -18,6 +18,20 @@ dependencyResolutionManagement {
 rootProject.name = "ReadThat"
 include(":app")
 include(":feature:feed")
+include(":feature:feed-ui")
+include(":feature:detail-ui")
+include(":feature:mediafeed-ui")
+include(":feature:ad-ui")
+include(":feature:shell-ui")
+include(":feature:search-ui")
+include(":feature:profile-ui")
+include(":feature:creation-ui")
+include(":feature:settings-ui")
+include(":feature:community-ui")
+include(":feature:auth-ui")
+// KMP application coordinator. This module composes the independently reusable feature UI
+// modules; :composeApp is deliberately only the Android/iOS binary host.
+include(":feature:app-ui")
 include(":feature:profile")
 include(":feature:search")
 include(":feature:communities")
@@ -47,8 +61,17 @@ project(":core:observability").projectDir = file("observability")
 include(":core:data")
 include(":core:post")
 
+// Platform-neutral post/comment URL parsing and delivery. Kept independent from
+// navigation and UI so Android, iOS, and future browser clients share one contract.
+include(":core:deeplink")
+
+// Platform-neutral application destinations and bounded back-stack policy. UI
+// hosts translate these into native/Navigation Compose route representations.
+include(":core:navigation")
+
 // Reusable Compose primitives shared across feature modules. Keeping rich-text rendering here
 // avoids feature-to-feature dependencies while giving posts and comments one Markdown contract.
+include(":core:design")
 include(":core:ui")
 
 // One process-wide HTTP stack shared by JSON, Coil, and Media3. HttpEngine
@@ -56,7 +79,42 @@ include(":core:ui")
 include(":core:network")
 project(":core:network").projectDir = file("networking")
 
+// Shared authenticated API, offline-first repositories, state holders and
+// synchronization policies consumed by both platform applications.
+include(":core:client")
+
+// Thin Android/iOS host and exported iOS framework. Feature rendering is owned by :feature:app-ui.
+include(":composeApp")
+
 // Shared Media3 engine: one process player across feed/detail, bounded adjacent
 // preloading, manifest-aware disk caching, and network/data-saver policy.
 include(":core:media")
 project(":core:media").projectDir = file("playback")
+
+// Compose Multiplatform boundary over Media3 on Android and AVPlayer on iOS. Feature UI can
+// share playback ownership, HTTPS filtering, prefetch, and observability without hiding the
+// platform-native engines behind an application module.
+include(":core:media-ui")
+
+// Compose Multiplatform image boundary. Shared code owns HTTPS filtering, stable cache identities,
+// retry/loading behavior and bounded prefetch windows; Android retains Coil over UnifiedTransport
+// while iOS decodes bytes supplied by the process-scoped shared client.
+include(":core:image-ui")
+
+// Shared media-acquisition policy plus narrow platform staging adapters. Native photo/camera
+// pickers stay at the host edge, while byte limits, MIME rules, selection bounds, and durable
+// app-private staging cannot drift between Android and iOS.
+include(":core:media-acquisition")
+
+// Compose Multiplatform presentation boundary for native photo/video pickers and camera capture.
+// Feature screens call one launcher contract; Android Activity Results and the Swift PhotosUI
+// notification bridge remain target-specific implementations inside the capability module.
+include(":core:media-acquisition-ui")
+
+// Typed, platform-neutral share payload policy. Android and iOS only present the native chooser;
+// product text/subject/MIME semantics are compiled once.
+include(":core:sharing")
+
+// Compose Multiplatform presentation boundary for the system share sheet. Product payload policy
+// remains in :core:sharing; Android's chooser and the Swift notification bridge are target actuals.
+include(":core:sharing-ui")

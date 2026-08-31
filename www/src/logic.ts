@@ -13,7 +13,7 @@ export function postGroup(post: Post): FeedGroup {
     { type: "title", cellId: "title", text: post.title },
   ];
   if (post.crosspostParentId) cells.push({ type: "announcement", cellId: "crosspost", text: `Reshared from post ${post.crosspostParentId}`, sourcePostId: post.crosspostParentId });
-  if (post.kind === "text" && post.body) cells.push({ type: "text", cellId: "body", body: post.body, maxLines: 100_000 });
+  if (post.body) cells.push({ type: "text", cellId: "body", body: post.body, maxLines: 100_000 });
   if (post.kind === "link" && post.url) cells.push({ type: "link", cellId: "link", url: post.url, domain: new URL(post.url).hostname });
   const images = post.mediaItems?.length ? post.mediaItems : post.media ? [post.media] : [];
   if (post.kind === "image" && images.length > 1) cells.push({

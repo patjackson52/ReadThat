@@ -53,6 +53,7 @@ data class CommentsUiState(
     val isSubmittingComment: Boolean = false,
     val interactionError: String? = null,
     val focusedCommentId: String? = null,
+    val rootCommentId: String? = null,
 ) {
     val isEmpty: Boolean get() = render.rows.isEmpty()
 }
@@ -125,6 +126,7 @@ class CommentsViewModel(
                 isSubmittingComment = flags.commentSubmitting,
                 interactionError = flags.interactionError,
                 focusedCommentId = focusCommentId,
+                rootCommentId = rootCommentId,
             )
         }.stateIn(
             scope = viewModelScope,

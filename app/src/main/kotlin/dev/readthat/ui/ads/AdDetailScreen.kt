@@ -1,15 +1,6 @@
 package dev.readthat.ui.ads
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
-import android.os.Build
 import android.os.SystemClock
-import android.webkit.WebResourceError
-import android.webkit.WebResourceRequest
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.webkit.URLUtil
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +26,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -50,8 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import coil3.compose.AsyncImage
+import dev.readthat.ad.ui.SharedPlatformAdDetailScreen
+import dev.readthat.ad.ui.PlatformAdLanding
 import dev.readthat.observability.ProductAnalytics
 import dev.readthat.observability.ProductContentType
 import dev.readthat.observability.ProductEvent
@@ -69,9 +60,30 @@ import dev.readthat.domain.AdMediaKind
 import dev.readthat.shared.AppSettings
 import dev.readthat.playback.rememberVideoPlaybackPolicy
 
-/** Reddit-style hybrid destination: retained media above an in-app landing page. */
+/** Android host for the canonical shared ad-detail layout and analytics. */
 @Composable
 fun AdDetailScreen(
+    ad: AdLaunchContext,
+    settings: AppSettings,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val source = remember(ad.cacheKey, ad.hlsUrl, ad.fallbackUrl) {
+        AdaptiveVideoSource(ad.hlsUrl, ad.fallbackUrl, ad.cacheKey)
+    }
+    SharedPlatformAdDetailScreen(
+        ad = ad,
+        settings = settings,
+        onClose = onClose,
+        initialMuted = remember(source) { VideoPlaybackCoordinator.isMuted(source) ?: true },
+        onMutedChanged = { muted -> VideoPlaybackCoordinator.setMuted(source, muted) },
+        modifier = modifier,
+    )
+}
+
+/** Mature Android implementation retained compiled as a migration reference. */
+@Composable
+fun LegacyAdDetailScreen(
     ad: AdLaunchContext,
     settings: AppSettings,
     onClose: () -> Unit,
@@ -260,109 +272,9 @@ fun AdDetailScreen(
                 style = MaterialTheme.typography.titleMedium,
             )
         }
-        AdLandingWebView(
+        PlatformAdLanding(
             ad = ad,
             modifier = Modifier.fillMaxWidth().weight(1f),
         )
-    }
-}
-
-@Composable
-@SuppressLint("SetJavaScriptEnabled")
-private fun AdLandingWebView(ad: AdLaunchContext, modifier: Modifier = Modifier) {
-    if (!URLUtil.isHttpsUrl(ad.destinationUrl)) {
-        Box(modifier, contentAlignment = Alignment.Center) {
-            Text("This destination cannot be opened securely.")
-        }
-        return
-    }
-    var webView by remember(ad.adId) { mutableStateOf<WebView?>(null) }
-    var loadStartedAt by remember(ad.destinationUrl) { mutableLongStateOf(0L) }
-    var loadedUrl by remember(ad.destinationUrl) { mutableStateOf<String?>(null) }
-    var loadFailed by remember(ad.destinationUrl) { mutableStateOf(false) }
-
-    Box(modifier) {
-        AndroidView(
-            modifier = Modifier.fillMaxSize(),
-            factory = { context ->
-                WebView(context).apply {
-                    webView = this
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.safeBrowsingEnabled = true
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                            !request.url.scheme.equals("https", ignoreCase = true)
-
-                        override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
-                            loadStartedAt = SystemClock.elapsedRealtime()
-                            loadFailed = false
-                        }
-
-                        override fun onPageFinished(view: WebView, url: String) {
-                            if (loadedUrl == url || loadFailed) return
-                            loadedUrl = url
-                            ProductAnalytics.record(ProductEvent(
-                                name = ProductEventName.AD_LANDING_LOAD,
-                                surface = ProductSurface.AD_DETAIL,
-                                contentId = ad.adId,
-                                contentType = ProductContentType.AD,
-                                durationMs = (SystemClock.elapsedRealtime() - loadStartedAt).coerceAtLeast(0L),
-                            ))
-                        }
-
-                        override fun onReceivedError(
-                            view: WebView,
-                            request: WebResourceRequest,
-                            error: WebResourceError,
-                        ) {
-                            if (!request.isForMainFrame) return
-                            loadFailed = true
-                            ProductAnalytics.record(ProductEvent(
-                                name = ProductEventName.AD_LANDING_LOAD,
-                                surface = ProductSurface.AD_DETAIL,
-                                contentId = ad.adId,
-                                contentType = ProductContentType.AD,
-                                reason = ProductEventReason.ERROR,
-                                durationMs = (SystemClock.elapsedRealtime() - loadStartedAt).coerceAtLeast(0L),
-                            ))
-                        }
-                    }
-                    loadUrl(ad.destinationUrl)
-                }
-            },
-        )
-        if (loadFailed) {
-            Column(
-                Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface).padding(28.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text("Portfolio page unavailable", style = MaterialTheme.typography.titleLarge)
-                Text(
-                    "${ad.displayDomain} could not be loaded. The video remains available while you retry.",
-                    modifier = Modifier.padding(top = 10.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                TextButton(
-                    onClick = {
-                        loadFailed = false
-                        webView?.loadUrl(ad.destinationUrl)
-                    },
-                    modifier = Modifier.padding(top = 8.dp),
-                ) { Text("Retry") }
-            }
-        }
-    }
-
-    DisposableEffect(ad.adId) {
-        onDispose {
-            webView?.stopLoading()
-            webView?.destroy()
-            webView = null
-        }
     }
 }

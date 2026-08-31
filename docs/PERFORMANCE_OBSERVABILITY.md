@@ -151,13 +151,15 @@ Android is fully wired:
 - The network event records a route template, protocol, status class, payload
   bytes, and Cloudflare `Server-Timing: edge` duration. It never records a URL.
 
-The Swift actor and browser adapter use the same envelope. Each has a bounded
-durable outbox and foreground/background-safe flushing. The browser adapter also
-installs LCP, INP, and CLS observers. This repository does not contain an iOS or
-web UI target, so their lifecycle/view call sites are integration reference code;
-the endpoint and schema are live and shared. A production iOS shell should also
-subscribe to MetricKit for daily launch/hang/animation diagnostics and retain
-the event timers here for near-real-time product slices.
+The active iOS Compose target uses the same KMP recorder, Room outbox, sanitizer,
+batching, and shared HTTP client. A lifecycle-scoped native CADisplayLink is only
+the timing source; frame batching, jank/slow/frozen thresholds,
+p95 math, surface attribution, and wire fields are the same KMP policy consumed
+by Android JankStats. Lifecycle stop flushes the partial batch without creating
+a second Swift telemetry or networking stack. The browser adapter uses the same
+envelope and installs LCP, INP, and CLS observers. MetricKit remains a useful
+release-diagnostics complement for daily launch/hang payloads; it is not the
+near-real-time product/frame event path.
 
 ## Privacy, abuse, and cardinality policy
 

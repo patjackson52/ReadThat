@@ -1051,6 +1051,7 @@ describe("ReadThat backend API", () => {
       subreddit: "gallerydev",
       kind: "image",
       title: "An ordered gallery",
+      body: "The story behind this gallery.",
       mediaIds,
       clientMutationId: mutation,
     };
@@ -1080,8 +1081,14 @@ describe("ReadThat backend API", () => {
     const feed = await api.request("/v1/feed?limit=10&subreddit=gallerydev");
     const group = (feed.body.groups as Array<{
       groupId: string;
-      cells: Array<{ type: string; items?: Array<{ mediaId: string }> }>;
+      cells: Array<{ type: string; body?: string; items?: Array<{ mediaId: string }> }>;
     }>).find((item) => item.groupId === post.id);
+    expect(group?.cells.map((cell) => cell.type)).toEqual([
+      "metadata", "title", "text", "image_carousel", "actionbar",
+    ]);
+    expect(group?.cells.find((cell) => cell.type === "text")?.body).toBe(
+      "The story behind this gallery.",
+    );
     const carousel = group?.cells.find((cell) => cell.type === "image_carousel");
     expect(carousel?.items?.map((item) => item.mediaId)).toEqual(mediaIds);
 

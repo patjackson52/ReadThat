@@ -4,7 +4,7 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.mediafeed.domain.MediaFeedItem
 import dev.readthat.data.db.AppDatabase
 import dev.readthat.data.db.ItemStateEntity
@@ -73,7 +73,7 @@ class MediaFeedRemoteMediator(
                 val uniqueItems = page.items.distinctBy(MediaFeedItem::postId)
                     .filterNot { it.postId in existingIds }
                     .filterNot { preserveNavigationSeed && it.postId == anchorPostId }
-                db.withTransaction {
+                db.withWriteTransaction {
                     if (loadType == LoadType.REFRESH) {
                         mediaDao.clearEntries(accountId, feedId)
                         mediaDao.clearRemoteKey(accountId, feedId)

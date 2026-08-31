@@ -1,14 +1,13 @@
 package dev.readthat.observability
 
 import androidx.metrics.performance.FrameData
-import dev.readthat.observability.PerformanceEvent
+import dev.readthat.observability.FrameHealthAggregator
 import dev.readthat.observability.PerformanceMetric
 import dev.readthat.observability.PerformanceOutcome
 import dev.readthat.observability.PerformanceSurface
 import dev.readthat.observability.PerformanceTelemetry
 import dev.readthat.observability.PerformanceTimer
 import dev.readthat.observability.performanceTimer
-import kotlin.math.ceil
 
 /** User-journey timers whose boundaries cross navigation destinations. */
 class AndroidPerformanceSession(
@@ -55,65 +54,18 @@ class AndroidPerformanceSession(
  */
 class FramePerformanceAggregator {
     private val lock = Any()
-    private val buckets = mutableMapOf<PerformanceSurface, FrameBucket>()
+    private val aggregator = FrameHealthAggregator()
 
     fun onFrame(frame: FrameData) {
         val surface = PerformanceTelemetry.currentSurface
         val event = synchronized(lock) {
-            val bucket = buckets.getOrPut(surface, ::FrameBucket)
-            bucket.add(frame.frameDurationUiNanos / 1_000_000.0, frame.isJank)
-            if (bucket.frameCount >= FRAMES_PER_EVENT) {
-                bucket.toEvent(surface).also { buckets[surface] = FrameBucket() }
-            } else null
+            aggregator.add(surface, frame.frameDurationUiNanos / 1_000_000.0, frame.isJank)
         }
         event?.let(PerformanceTelemetry::record)
     }
 
     fun flush() {
-        val events = synchronized(lock) {
-            buckets.mapNotNull { (surface, bucket) ->
-                bucket.takeIf { it.frameCount > 0 }?.toEvent(surface)
-            }.also { buckets.clear() }
-        }
+        val events = synchronized(lock) { aggregator.drain() }
         events.forEach(PerformanceTelemetry::record)
     }
-
-    private class FrameBucket {
-        private val samples = ArrayList<Double>(FRAMES_PER_EVENT)
-        var frameCount = 0
-            private set
-        private var totalDurationMs = 0.0
-        private var jankCount = 0
-        private var slowFrameCount = 0
-        private var frozenFrameCount = 0
-
-        fun add(durationMs: Double, isJank: Boolean) {
-            frameCount += 1
-            totalDurationMs += durationMs
-            samples += durationMs
-            if (isJank) jankCount += 1
-            if (durationMs > 16.67) slowFrameCount += 1
-            if (durationMs > 700.0) frozenFrameCount += 1
-        }
-
-        fun toEvent(surface: PerformanceSurface): PerformanceEvent {
-            samples.sort()
-            val p95 = samples[(ceil(samples.size * 0.95).toInt() - 1).coerceIn(0, samples.lastIndex)]
-            val average = totalDurationMs / frameCount
-            return PerformanceEvent(
-                name = PerformanceMetric.SCREEN_FRAME_SUMMARY,
-                value = p95,
-                surface = surface,
-                measurements = mapOf(
-                    "frame_count" to frameCount.toDouble(),
-                    "jank_count" to jankCount.toDouble(),
-                    "slow_frame_count" to slowFrameCount.toDouble(),
-                    "frozen_frame_count" to frozenFrameCount.toDouble(),
-                    "fps" to (1_000.0 / average).coerceAtMost(240.0),
-                ),
-            )
-        }
-    }
-
-    private companion object { const val FRAMES_PER_EVENT = 300 }
 }

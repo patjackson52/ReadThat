@@ -5,8 +5,10 @@ import androidx.paging.LoadType
 import androidx.paging.PagingConfig
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
+import androidx.sqlite.execSQL
+import androidx.sqlite.driver.AndroidSQLiteDriver
 import dev.readthat.data.FeedRemoteSource
 import dev.readthat.data.PostVoteResult
 import dev.readthat.data.db.AppDatabase
@@ -202,41 +204,42 @@ class FeedRemoteMediatorTest {
     }
 
     @Test
-    fun `v8 migration deterministically normalizes legacy duplicate positions`() {
-        val sql = db.openHelper.writableDatabase
-        sql.execSQL("DROP INDEX index_feed_groups_accountId_feedId_sortIndex")
-        listOf("a" to 5, "b" to 5, "c" to 1).forEach { (id, sortIndex) ->
-            sql.execSQL(
+    fun `v8 migration deterministically normalizes legacy duplicate positions`() = runTest {
+        AndroidSQLiteDriver().open(":memory:").use { connection ->
+            connection.execSQL(
                 """
-                INSERT INTO feed_groups
-                    (accountId, feedId, groupId, sortIndex, payloadJson, payloadVersion)
-                VALUES (?, ?, ?, ?, ?, 1)
+                CREATE TABLE feed_groups (
+                    accountId TEXT NOT NULL,
+                    feedId TEXT NOT NULL,
+                    groupId TEXT NOT NULL,
+                    sortIndex INTEGER NOT NULL,
+                    payloadJson TEXT NOT NULL,
+                    payloadVersion INTEGER NOT NULL,
+                    PRIMARY KEY(accountId, feedId, groupId)
+                )
                 """.trimIndent(),
-                arrayOf<Any?>(
-                    CacheScope.DEFAULT_ACCOUNT_ID,
-                    CacheScope.HOME_FEED_ID,
-                    id,
-                    sortIndex,
-                    json.encodeToString(group(id)),
-                ),
             )
-        }
-
-        AppDatabase.MIGRATION_7_8.migrate(sql)
-
-        val positions = buildList {
-            sql.query(
-                """
-                SELECT groupId, sortIndex FROM feed_groups
-                WHERE accountId = ? AND feedId = ?
-                ORDER BY sortIndex
-                """.trimIndent(),
-                arrayOf(CacheScope.DEFAULT_ACCOUNT_ID, CacheScope.HOME_FEED_ID),
-            ).use { cursor ->
-                while (cursor.moveToNext()) add(cursor.getString(0) to cursor.getInt(1))
+            listOf("a" to 5, "b" to 5, "c" to 1).forEach { (id, sortIndex) ->
+                connection.execSQL(
+                    "INSERT INTO feed_groups VALUES " +
+                        "('${CacheScope.DEFAULT_ACCOUNT_ID}', '${CacheScope.HOME_FEED_ID}', " +
+                        "'$id', $sortIndex, '{}', 1)",
+                )
             }
+
+            AppDatabase.MIGRATION_7_8.migrate(connection)
+
+            val positions = buildList {
+                connection.prepare(
+                    "SELECT groupId, sortIndex FROM feed_groups ORDER BY sortIndex",
+                ).use { statement ->
+                    while (statement.step()) {
+                        add(statement.getText(0) to statement.getLong(1).toInt())
+                    }
+                }
+            }
+            assertEquals(listOf("c" to 0, "a" to 1, "b" to 2), positions)
         }
-        assertEquals(listOf("c" to 0, "a" to 1, "b" to 2), positions)
     }
 
     @Test

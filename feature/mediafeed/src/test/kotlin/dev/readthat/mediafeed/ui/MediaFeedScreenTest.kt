@@ -43,13 +43,21 @@ class MediaFeedScreenTest {
     }
 
     @Test
-    fun `video poster renderer consumes the exact prefetched cache key`() {
+    fun `video first frame preview uses the exact prefetched cache key`() {
         val media = video("poster-contract").media
 
+        assertEquals(media.posterUrl, media.prefetchModel())
         assertEquals(
             videoPosterCacheKey("video:poster-contract", media.posterUrl),
             media.prefetchKey("poster-contract"),
         )
+    }
+
+    @Test
+    fun `still image renderer consumes the exact prefetched cache key`() {
+        val media = item("image-contract").media
+
+        assertEquals(media.cacheKey ?: "image:${media.mediaId}", media.prefetchKey("image-contract"))
     }
 
     private fun item(id: String) = MediaFeedItem(

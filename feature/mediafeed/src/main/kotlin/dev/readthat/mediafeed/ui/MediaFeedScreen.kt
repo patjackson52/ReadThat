@@ -65,6 +65,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.imageLoader
 import coil3.request.Disposable
@@ -72,6 +73,7 @@ import coil3.request.ImageRequest
 import coil3.size.Precision
 import dev.readthat.mediafeed.domain.MediaFeedItem
 import dev.readthat.mediafeed.domain.MediaFeedMedia
+import dev.readthat.client.SharedMediaFeedViewModel
 import dev.readthat.observability.PerformanceMetric
 import dev.readthat.observability.PerformanceTimer
 import dev.readthat.observability.PerformanceSurface
@@ -92,8 +94,8 @@ import dev.readthat.shared.videoPosterCacheKey
 import kotlinx.coroutines.delay
 
 @Composable
-fun MediaFeedScreen(
-    viewModel: MediaFeedViewModel,
+fun LegacyMediaFeedScreen(
+    viewModel: SharedMediaFeedViewModel,
     settings: AppSettings,
     onClose: () -> Unit,
     onOpenDetails: (MediaFeedItem) -> Unit,
@@ -103,7 +105,7 @@ fun MediaFeedScreen(
     modifier: Modifier = Modifier,
 ) {
     val items = viewModel.feed.collectAsLazyPagingItems()
-    val navigationItems = viewModel.navigationItems
+    val navigationItems by viewModel.navigationItems.collectAsStateWithLifecycle()
     val pageCount = maxOf(1, items.itemCount, navigationItems.size)
     val restoredPage = remember { viewModel.restoredPage }
     val immediateInitialPage = restoredPage.takeIf { it in navigationItems.indices } ?: 0
@@ -211,10 +213,12 @@ fun MediaFeedScreen(
             .mapNotNull(::itemAt)
             .flatMap { item ->
                 item.allMedia.mapNotNull { media ->
-                    media.prefetchModel(item.postId)?.let { model -> Triple(item, media, model) }
+                    media.prefetchModel()?.let { model -> Triple(item, media, model) }
                 }
             }
-        val desiredKeys = desired.mapTo(mutableSetOf()) { (item, media, _) -> media.prefetchKey(item.postId) }
+        val desiredKeys = desired.mapTo(mutableSetOf()) { (item, media, _) ->
+            media.prefetchKey(item.postId)
+        }
         (imageRequests.keys - desiredKeys).forEach { key -> imageRequests.remove(key)?.dispose() }
         desired.forEach { (item, media, model) ->
             val key = media.prefetchKey(item.postId)
@@ -357,14 +361,11 @@ private fun MediaPage(
                 // PlayerView owns Android touch dispatch even with controls disabled.
                 Box(mediaModifier)
             }
-            // The poster is already decoded by the adjacent-page warmer. Retain it above the
-            // TextureView until Media3 confirms the new source's first frame; this hides decoder
-            // handoff latency without claiming playback is ready before it actually is.
-            if (!active || !renderedFirstFrame) item.media.posterUrl?.let { poster ->
+            if (!active || !renderedFirstFrame) item.media.posterUrl?.let { preview ->
                 MediaImage(
                     item.postId,
                     item.media,
-                    poster,
+                    preview,
                     mediaModifier,
                     zoomable = false,
                     requestCacheKey = item.media.prefetchKey(item.postId),
@@ -618,7 +619,7 @@ private fun dev.readthat.mediafeed.domain.MediaFeedMedia.videoSource(postId: Str
     cacheKey = cacheKey ?: mediaId?.let { "video:$it" } ?: "post:$postId",
 )
 
-private fun dev.readthat.mediafeed.domain.MediaFeedMedia.prefetchModel(postId: String): String? =
+internal fun dev.readthat.mediafeed.domain.MediaFeedMedia.prefetchModel(): String? =
     if (isVideo) posterUrl else zoomUrl ?: url
 
 internal fun dev.readthat.mediafeed.domain.MediaFeedMedia.prefetchKey(postId: String): String =

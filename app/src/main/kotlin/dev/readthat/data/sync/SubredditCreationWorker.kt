@@ -10,18 +10,16 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import dev.readthat.observability.PerformanceEvent
-import dev.readthat.observability.PerformanceMetric
-import dev.readthat.observability.PerformanceOutcome
-import dev.readthat.observability.PerformanceSurface
-import dev.readthat.observability.PerformanceTelemetry
-import dev.readthat.data.backend.BackendGraph
-import dev.readthat.data.backend.BackendHttpException
-import dev.readthat.data.db.AppDatabase
-import dev.readthat.data.db.SubredditEntity
-import dev.readthat.data.db.CommunityMembershipEntity
+import dev.readthat.BuildConfig
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatClientRegistry
+import dev.readthat.client.SharedCreationOutboxProcessor
+import dev.readthat.client.SharedCreationOutboxResult
+import dev.readthat.data.db.AndroidDatabaseProvider
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 
 object SubredditCreationScheduler {
     const val KEY_MUTATION_ID = "mutation_id"
@@ -40,7 +38,7 @@ object SubredditCreationScheduler {
     }
 
     suspend fun resumePending(context: Context, accountId: String) {
-        AppDatabase.get(context).subredditOutboxDao().resumable(accountId).forEach { pending ->
+        AndroidDatabaseProvider.get(context).subredditOutboxDao().resumable(accountId).forEach { pending ->
             enqueue(context, pending.mutationId)
         }
     }
@@ -53,82 +51,55 @@ class SubredditCreationWorker(
     override suspend fun doWork(): Result {
         val mutationId = inputData.getString(SubredditCreationScheduler.KEY_MUTATION_ID)
             ?: return Result.failure()
-        val database = AppDatabase.get(applicationContext)
-        val dao = database.subredditOutboxDao()
-        val pending = dao.get(mutationId) ?: return Result.success()
-        if (pending.remoteSubredditId != null) return Result.success()
-        if (database.accountDao().active()?.id != pending.accountId) {
-            dao.updateProgress(mutationId, "waiting_account", null)
-            return Result.success()
-        }
-
         return try {
-            dao.updateProgress(mutationId, "creating", null)
-            val created = BackendGraph.repository(applicationContext).createSubreddit(
-                name = pending.name,
-                displayName = pending.displayName,
-                description = pending.description,
-                accessType = pending.accessType,
-                clientMutationId = pending.mutationId,
-            )
-            dao.completeWithMembership(
-                mutationId,
-                SubredditEntity(
-                    accountId = pending.accountId,
-                    id = created.id,
-                    name = created.name.lowercase(),
-                    displayName = created.displayName,
-                    description = created.description,
-                    accessType = created.accessType,
-                    viewerRole = created.viewerRole,
-                    subscriberCount = created.subscriberCount,
-                    updatedAt = System.currentTimeMillis(),
-                ),
-                CommunityMembershipEntity(
-                    accountId = pending.accountId,
-                    id = created.id,
-                    name = created.name.lowercase(),
-                    displayName = created.displayName,
-                    accessType = created.accessType,
-                    viewerRole = created.viewerRole ?: "owner",
-                    source = "remote",
-                    syncedAt = System.currentTimeMillis(),
-                ),
-            )
-            // A dependent post may currently be sleeping under WorkManager's
-            // exponential backoff. Community creation is the ordering barrier,
-            // so release all resumable commands for this account immediately.
-            PostUploadScheduler.releaseCommunityBarrier(
+            val runtime = AndroidReadThatClientRegistry.get(
                 applicationContext,
-                pending.accountId,
-                pending.name,
+                AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
             )
-            PerformanceTelemetry.record(PerformanceEvent(
-                name = PerformanceMetric.MUTATION_SERVER_ACK,
-                value = (System.currentTimeMillis() - pending.createdAt).toDouble().coerceAtLeast(0.0),
-                surface = PerformanceSurface.BACKGROUND,
-                attributes = mapOf("mutation_type" to "subreddit_create"),
-            ))
-            Result.success()
+            val pending = runtime.database.subredditOutboxDao().get(mutationId)
+            val result = SharedCreationOutboxProcessor(
+                client = runtime.client,
+                database = runtime.database,
+                scope = CoroutineScope(currentCoroutineContext()),
+            ).processCommunity(mutationId, terminalAttempt = runAttemptCount >= MAX_RETRIES)
+            when (result) {
+                SharedCreationOutboxResult.Completed -> {
+                    // A dependent post may currently be sleeping under WorkManager's
+                    // exponential backoff. Native scheduling releases the shared ordering barrier.
+                    if (pending != null) {
+                        PostUploadScheduler.releaseCommunityBarrier(
+                            applicationContext,
+                            pending.accountId,
+                            pending.name,
+                        )
+                    }
+                    Result.success()
+                }
+                SharedCreationOutboxResult.NoWork -> {
+                    // Recover the native scheduling side effect if the process died after the
+                    // shared Room transaction committed but before dependent work was released.
+                    if (pending?.remoteSubredditId != null) {
+                        PostUploadScheduler.releaseCommunityBarrier(
+                            applicationContext,
+                            pending.accountId,
+                            pending.name,
+                        )
+                    }
+                    Result.success()
+                }
+                SharedCreationOutboxResult.WaitingForAccount -> Result.success()
+                SharedCreationOutboxResult.Retry -> Result.retry()
+                SharedCreationOutboxResult.Failed -> Result.failure()
+            }
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (error: Throwable) {
-            val permanent = error is BackendHttpException &&
-                error.status in 400..499 && error.status !in setOf(408, 429)
-            if (permanent || runAttemptCount >= MAX_RETRIES) {
-                dao.fail(pending, error.message ?: "Could not create community")
-                PerformanceTelemetry.record(PerformanceEvent(
-                    name = PerformanceMetric.MUTATION_SERVER_ACK,
-                    value = (System.currentTimeMillis() - pending.createdAt).toDouble().coerceAtLeast(0.0),
-                    surface = PerformanceSurface.BACKGROUND,
-                    outcome = PerformanceOutcome.FAILURE,
-                    attributes = mapOf("mutation_type" to "subreddit_create"),
-                ))
-                Result.failure()
-            } else {
-                dao.updateProgress(mutationId, "retrying", error.message)
-                Result.retry()
-            }
+        } catch (_: Throwable) {
+            if (runAttemptCount >= MAX_RETRIES) Result.failure() else Result.retry()
         }
     }
 

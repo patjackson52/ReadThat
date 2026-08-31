@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.PendingPostEntity
 import dev.readthat.data.db.PendingSubredditEntity
 import dev.readthat.data.sync.PostUploadScheduler
@@ -19,7 +20,7 @@ class CommunityCreationStatusViewModel(
     app: Application,
     private val mutationId: String,
 ) : AndroidViewModel(app) {
-    private val dao = AppDatabase.get(app).subredditOutboxDao()
+    private val dao = AndroidDatabaseProvider.get(app).subredditOutboxDao()
     val pending: StateFlow<PendingSubredditEntity?> = dao.observe(mutationId).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
@@ -39,7 +40,7 @@ class PendingPostViewModel(
     app: Application,
     private val mutationId: String,
 ) : AndroidViewModel(app) {
-    private val dao = AppDatabase.get(app).postOutboxDao()
+    private val dao = AndroidDatabaseProvider.get(app).postOutboxDao()
     val pending: StateFlow<PendingPostEntity?> = dao.observe(mutationId).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),

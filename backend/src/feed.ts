@@ -150,9 +150,10 @@ async function cellsFor(
       sourcePostId: row.crosspost_parent_id,
     });
   }
-  if (row.kind === "text" && row.body) {
+  if (row.body) {
     cells.push({ type: "text", cellId: "body", body: row.body, maxLines: 3 });
-  } else if (row.kind === "link" && row.url) {
+  }
+  if (row.kind === "link" && row.url) {
     let domain = row.url;
     try { domain = new URL(row.url).hostname; } catch { /* URL was validated on write. */ }
     cells.push({ type: "link", cellId: "link", url: row.url, domain });

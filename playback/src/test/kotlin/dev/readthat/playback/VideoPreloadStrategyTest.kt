@@ -8,6 +8,24 @@ import org.junit.Test
 
 class VideoPreloadStrategyTest {
     @Test
+    fun `deduplicating repeated media preserves the requested source focus`() {
+        val first = AdaptiveVideoSource("https://cdn.test/a.m3u8", null, "a")
+        val second = AdaptiveVideoSource("https://cdn.test/b.m3u8", null, "b")
+        val third = AdaptiveVideoSource("https://cdn.test/c.m3u8", null, "c")
+        val sources = listOf(first, second, first, third)
+
+        assertEquals(0, deduplicatedVideoFocusIndex(sources, 2))
+        assertEquals(2, deduplicatedVideoFocusIndex(sources, 3))
+    }
+
+    @Test
+    fun `player retains content only for an already rendered same-source handoff`() {
+        assertTrue(keepContentOnPlayerReset("video:a", "video:a"))
+        assertFalse(keepContentOnPlayerReset("video:b", "video:a"))
+        assertFalse(keepContentOnPlayerReset("video:a", null))
+    }
+
+    @Test
     fun `immersive media feed loops while feed and detail remain one shot`() {
         assertEquals(Player.REPEAT_MODE_OFF, videoRepeatMode(VideoPlaybackRole.Feed))
         assertEquals(Player.REPEAT_MODE_ONE, videoRepeatMode(VideoPlaybackRole.MediaFeed))

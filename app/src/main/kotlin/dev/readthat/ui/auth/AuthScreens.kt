@@ -36,9 +36,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import dev.readthat.core.ui.brand.ReadThatLogo
+import dev.readthat.core.ui.theme.ReadThatOrange
 import dev.readthat.shared.AuthForm
 import dev.readthat.shared.AuthMode
-import dev.readthat.ui.theme.ReadThatOrange
 
 @Composable
 fun WelcomeScreen(

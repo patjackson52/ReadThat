@@ -14,7 +14,9 @@ data class PublicProfileUiState(
     val error: String? = null,
 )
 
-class PublicProfileViewModel(
+/** Mature Android repository implementation retained as a migration reference. */
+@Suppress("unused")
+class LegacyPublicProfileViewModel(
     repository: BackendRepository,
     username: String,
 ) : ViewModel() {

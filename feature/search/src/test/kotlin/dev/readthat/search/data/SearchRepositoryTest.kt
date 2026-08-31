@@ -2,7 +2,7 @@ package dev.readthat.search.data
 
 import android.content.Context
 import androidx.paging.testing.asSnapshot
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.search.domain.SearchDiscover
 import dev.readthat.search.domain.SearchPage

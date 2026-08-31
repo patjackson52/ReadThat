@@ -80,8 +80,8 @@ import dev.readthat.search.domain.SearchTime
 import dev.readthat.search.domain.SearchType
 
 @Composable
-fun SearchScreen(
-    viewModel: SearchViewModel,
+fun LegacySearchScreen(
+    viewModel: LegacySearchViewModel,
     onBack: () -> Unit,
     onPost: (String) -> Unit,
     onComment: (postId: String, commentId: String) -> Unit,

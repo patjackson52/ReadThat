@@ -1,6 +1,6 @@
 package dev.readthat
 
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.data.FakeFeedRemoteSource
 import dev.readthat.data.FeedRepository

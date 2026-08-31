@@ -16,13 +16,16 @@ All clients consume the backend's flattened video cell: `hlsUrl`, `dashUrl`,
   ceilings, idle decoder release, and segment-only LRU. The periodic feed worker
   uses `PreCacheHelper` on unmetered networks for only the first two seconds of
   the first startup video.
-- iOS uses `clients/ios/StreamVideoPlayer.swift` (AVPlayer native HLS,
-  constrained/expensive-path bitrate and buffer policy) and one long-lived
-  `clients/ios/UnifiedNetworkClient.swift` URLSession for API/images. Known
+- iOS uses AVPlayer native HLS plus one long-lived URLSession owned by the KMP
+  `IosSharedHttpTransport` for API/images/previews/uploads/telemetry. Known
   Cloudflare origins race HTTP/3 immediately; arbitrary link/image origins use
   normal Alt-Svc discovery. Images use a stable media/version L1 key and
   protocol-driven URLCache on disk. AVPlayer owns its optimized native HLS
   transport, while persistent offline HLS uses `AVAssetDownloadURLSession`.
+  `clients/ios/StreamAssetDownloadManager.swift` is the only compiled native
+  client shim in this directory. Networking, background maintenance, frame
+  telemetry, and player ownership live in their active KMP modules plus the
+  thin `iosApp` lifecycle host; there are no parallel Swift client stacks.
 - Android and iOS schedule constrained periodic refresh, and both expose an
   app-active refresh hook that commits network results to the local database
   behind already-visible cached UI.

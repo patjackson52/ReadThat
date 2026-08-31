@@ -3,6 +3,7 @@ package dev.readthat.ui.create
 import android.graphics.Color as AndroidColor
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,6 +58,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +67,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -77,11 +81,17 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import dev.readthat.communities.domain.CommunityDrawerSnapshot
+import dev.readthat.media.acquisition.MediaAcquisitionPolicies
+import dev.readthat.media.acquisition.finishAndroidCameraCapture
+import dev.readthat.media.acquisition.prepareAndroidCameraCapture
 import dev.readthat.shared.CreatePostDraft
 import dev.readthat.shared.LocalPostMedia
 import dev.readthat.shared.PostFlair
 import dev.readthat.shared.PostKind
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val ComposerBlue = Color(0xFF0A66C2)
 private val ComposerPaleBlue = Color(0xFFE7F3FF)
@@ -103,15 +113,45 @@ fun CreatePostScreen(
     var communityPickerVisible by remember { mutableStateOf(false) }
     var flairPickerVisible by remember { mutableStateOf(false) }
     var imageSourceVisible by remember { mutableStateOf(false) }
+    var pendingCaptureToken by rememberSaveable { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris ->
+    val imagePolicy = MediaAcquisitionPolicies.image
+    val imagePicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(imagePolicy.maximumItems),
+    ) { uris ->
         if (draft.localMediaItems.isEmpty()) viewModel.selectImages(uris) else viewModel.addImages(uris)
     }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
-        bitmap?.let(viewModel::selectCapturedImage)
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { succeeded ->
+        val token = pendingCaptureToken ?: return@rememberLauncherForActivityResult
+        pendingCaptureToken = null
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { finishAndroidCameraCapture(context, token, succeeded) } }
+                .onSuccess { media -> media?.let(viewModel::addCapturedMedia) }
+                .onFailure { viewModel.reportError(it.message ?: "Unable to save the captured photo") }
+        }
     }
-    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri?.let(viewModel::selectMedia)
+    }
+
+    fun takePhoto() {
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { prepareAndroidCameraCapture(context) } }
+                .onSuccess { capture ->
+                    pendingCaptureToken = capture.token
+                    runCatching { camera.launch(capture.outputUri) }
+                        .onFailure { error ->
+                            pendingCaptureToken = null
+                            scope.launch(Dispatchers.IO) {
+                                finishAndroidCameraCapture(context, capture.token, succeeded = false)
+                            }
+                            viewModel.reportError(error.message ?: "Unable to open the camera")
+                        }
+                }
+                .onFailure { viewModel.reportError(it.message ?: "Unable to prepare the camera") }
+        }
     }
 
     if (communityPickerVisible) {
@@ -149,7 +189,7 @@ fun CreatePostScreen(
                 onImage = { imageSourceVisible = true },
                 onVideo = {
                     viewModel.setKind(PostKind.Video)
-                    videoPicker.launch("video/*")
+                    videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
                 },
             )
         },
@@ -164,7 +204,7 @@ fun CreatePostScreen(
             onAddImages = { imageSourceVisible = true },
             onChooseMedia = {
                 if (draft.kind == PostKind.Image) imageSourceVisible = true
-                else videoPicker.launch("video/*")
+                else videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly))
             },
             onChooseFlair = { flairPickerVisible = true },
             modifier = Modifier.padding(padding),
@@ -199,12 +239,12 @@ fun CreatePostScreen(
             SourceRow(Icons.Default.CameraAlt, "Take photo") {
                 imageSourceVisible = false
                 if (draft.kind != PostKind.Image) viewModel.setKind(PostKind.Image)
-                camera.launch(null)
+                takePhoto()
             }
             SourceRow(Icons.Default.Image, "Photo library") {
                 imageSourceVisible = false
                 if (draft.kind != PostKind.Image) viewModel.setKind(PostKind.Image)
-                imagePicker.launch("image/*")
+                imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
             }
             Spacer(Modifier.height(24.dp))
         }

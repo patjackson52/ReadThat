@@ -9,45 +9,63 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import coil3.imageLoader
 import coil3.request.ImageRequest
+import dev.readthat.BuildConfig
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatClientRegistry
+import dev.readthat.client.OfflineFirstRepository
+import dev.readthat.client.SharedBackgroundMaintenance
+import dev.readthat.client.SharedBackgroundMaintenanceRequest
 import dev.readthat.playback.AdaptiveVideoSource
 import dev.readthat.playback.VideoStartupPrefetcher
-import dev.readthat.data.FeedSyncEngine
-import dev.readthat.data.backend.BackendGraph
-import dev.readthat.data.db.CacheScope
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CancellationException
-import kotlinx.serialization.json.Json
-import dev.readthat.domain.WireCell
-import dev.readthat.domain.WireFeedPage
+import kotlinx.coroutines.currentCoroutineContext
+import dev.readthat.shared.BackgroundFeedMediaPlan
 import dev.readthat.shared.AppSettings
 import dev.readthat.shared.ConnectionKind
 import dev.readthat.shared.DeviceTier
 import dev.readthat.shared.VideoPolicyResolver
-import dev.readthat.shared.videoPosterCacheKey
-
-private fun syncEngine(context: Context): FeedSyncEngine {
-    val db = AppDatabase.get(context)
-    return FeedSyncEngine(
-        db = db,
-        remote = BackendGraph.feed(context),
-        json = Json { ignoreUnknownKeys = true },
-    )
-}
+import dev.readthat.shared.backgroundFeedMediaPlan
 
 class FeedRefreshWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
-        val db = AppDatabase.get(applicationContext)
+        val db = AndroidDatabaseProvider.get(applicationContext)
         val account = db.accountDao().active() ?: return Result.success()
         return try {
-            val page = syncEngine(applicationContext).refresh(account.id, CacheScope.HOME_FEED_ID)
+            val runtime = AndroidReadThatClientRegistry.get(
+                applicationContext,
+                AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
+            )
+            if (runtime.client.restoreSession()?.id != account.id) return Result.success()
+            val page = SharedBackgroundMaintenance(
+                client = runtime.client,
+                database = runtime.database,
+                scope = CoroutineScope(currentCoroutineContext()),
+                accountId = account.id,
+            ).run(
+                SharedBackgroundMaintenanceRequest(
+                    // Dedicated unique workers retain Android's fine-grained retry/backoff lanes.
+                    drainMutations = false,
+                    refreshHomeFeed = true,
+                ),
+            ).refreshedFeed ?: return Result.success()
             // Feed refresh remains useful on every connected network. Posters are small and warm
-            // Coil's disk/memory caches for first-pixel scrolling. Video bytes remain a separate,
-            // best-effort unmetered step: one video and only its first two seconds.
+            // Coil's disk/memory caches for first-pixel scrolling. The common plan now includes
+            // still photos too, so a periodic refresh improves the actual offline feed rather than
+            // only its video placeholders. Video bytes remain a separate best-effort unmetered
+            // step: one video and only its first two seconds.
             try {
-                prefetchStartupMedia(db, page)
+                prefetchStartupMedia(db, page.backgroundFeedMediaPlan())
             } catch (cancellation: CancellationException) {
                 throw cancellation
             } catch (_: Exception) {
@@ -62,18 +80,20 @@ class FeedRefreshWorker(
         }
     }
 
-    private suspend fun prefetchStartupMedia(db: AppDatabase, page: WireFeedPage) {
+    private suspend fun prefetchStartupMedia(db: AppDatabase, plan: BackgroundFeedMediaPlan) {
         val connectivity = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val capabilities = connectivity.activeNetwork?.let(connectivity::getNetworkCapabilities) ?: return
         if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) return
         if (connectivity.restrictBackgroundStatus == ConnectivityManager.RESTRICT_BACKGROUND_STATUS_ENABLED) return
 
-        page.startupVideoPosters().forEach { poster ->
+        plan.images.forEach { image ->
             applicationContext.imageLoader.execute(
                 ImageRequest.Builder(applicationContext)
-                    .data(poster.url)
-                    .memoryCacheKey(poster.cacheKey)
-                    .diskCacheKey(poster.cacheKey)
+                    .data(image.url)
+                    .memoryCacheKey(
+                        (if (image.videoPreview) "preview:" else "image:") + image.cacheKey,
+                    )
+                    .diskCacheKey(image.cacheKey)
                     .build(),
             )
         }
@@ -107,46 +127,44 @@ class FeedRefreshWorker(
         )
         VideoStartupPrefetcher.prefetch(
             context = applicationContext,
-            sources = page.startupVideoSources(),
+            sources = plan.videos.map { video ->
+                AdaptiveVideoSource(
+                    hlsUrl = video.hlsUrl,
+                    fallbackUrl = video.fallbackUrl,
+                    cacheKey = video.cacheKey,
+                )
+            },
             cacheBytes = policy.cacheBytes,
         )
     }
 }
-
-internal fun WireFeedPage.startupVideoSources(): List<AdaptiveVideoSource> = groups.mapNotNull { group ->
-    group.cells.filterIsInstance<WireCell.Video>().firstOrNull()
-        ?.takeIf { it.deliveryStatus == "ready" || it.fallbackUrl != null || it.url != null }
-        ?.let { video ->
-            AdaptiveVideoSource(
-                hlsUrl = video.hlsUrl,
-                fallbackUrl = video.fallbackUrl ?: video.url,
-                cacheKey = video.cacheKey ?: "post:${group.groupId}",
-            )
-        }
-}.take(VideoStartupPrefetcher.MAX_STARTUP_VIDEOS)
-
-internal data class StartupVideoPoster(val url: String, val cacheKey: String)
-
-internal fun WireFeedPage.startupVideoPosters(): List<StartupVideoPoster> = groups.mapNotNull { group ->
-    val video = group.cells.filterIsInstance<WireCell.Video>().firstOrNull() ?: return@mapNotNull null
-    val poster = video.posterUrl ?: return@mapNotNull null
-    StartupVideoPoster(
-        poster,
-        videoPosterCacheKey(video.cacheKey ?: "post:${group.groupId}", poster),
-    )
-}.take(MAX_STARTUP_POSTERS)
-
-private const val MAX_STARTUP_POSTERS = 6
 
 class VoteOutboxWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
     override suspend fun doWork(): Result {
-        val db = AppDatabase.get(applicationContext)
+        val db = AndroidDatabaseProvider.get(applicationContext)
         val account = db.accountDao().active() ?: return Result.success()
         return try {
-            if (syncEngine(applicationContext).drainVoteOutbox(account.id)) {
+            val runtime = AndroidReadThatClientRegistry.get(
+                applicationContext,
+                AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
+            )
+            if (runtime.client.restoreSession()?.id != account.id) return Result.success()
+            OfflineFirstRepository(
+                client = runtime.client,
+                database = runtime.database,
+                scope = CoroutineScope(currentCoroutineContext()),
+                accountIdOverride = account.id,
+                maintainGlobalState = false,
+            ).syncPendingVotes()
+            if (runtime.database.feedDao().pendingVotes(account.id).isEmpty()) {
                 Result.success()
             } else {
                 Result.retry()

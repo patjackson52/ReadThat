@@ -21,9 +21,12 @@ import dev.readthat.observability.ProductEventName
 import dev.readthat.observability.ProductEventReason
 import dev.readthat.observability.ProductSurface
 import dev.readthat.BuildConfig
-import dev.readthat.data.backend.BackendGraph
-import dev.readthat.data.backend.BackendHttpException
+import dev.readthat.client.AndroidReadThatClientConfiguration
+import dev.readthat.client.AndroidReadThatClientRegistry
+import dev.readthat.client.ReadThatHttpException
+import dev.readthat.client.sanitizedForProductAnalytics
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.PendingProductAnalyticsEventEntity
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -66,7 +69,7 @@ class AndroidProductAnalyticsRecorder(
     init {
         ProductAnalyticsUploadScheduler.initialize(appContext)
         scope.launch {
-            val dao = AppDatabase.get(appContext).productAnalyticsOutboxDao()
+            val dao = AndroidDatabaseProvider.get(appContext).productAnalyticsOutboxDao()
             for (scoped in events) {
                 val inserted = dao.insert(PendingProductAnalyticsEventEntity(
                     // The engagement session can survive process death, so a
@@ -438,12 +441,20 @@ class ProductAnalyticsUploadWorker(
     appContext: Context,
     params: WorkerParameters,
 ) : CoroutineWorker(appContext, params) {
-    private val json = Json { ignoreUnknownKeys = false; explicitNulls = false }
+    private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     override suspend fun doWork(): Result {
-        val dao = AppDatabase.get(applicationContext).productAnalyticsOutboxDao()
-        var attemptedIds: List<String> = emptyList()
+        val dao = AndroidDatabaseProvider.get(applicationContext).productAnalyticsOutboxDao()
         return try {
+            val client = AndroidReadThatClientRegistry.get(
+                applicationContext,
+                AndroidReadThatClientConfiguration(
+                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
+                    appVersion = BuildConfig.VERSION_NAME,
+                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
+                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
+                ),
+            ).client
             repeat(MAX_BATCHES_PER_RUN) {
                 val scope = dao.oldest() ?: return Result.success()
                 val pending = dao.oldestForScope(
@@ -452,39 +463,37 @@ class ProductAnalyticsUploadWorker(
                     scope.accountId,
                     BATCH_SIZE,
                 )
-                attemptedIds = pending.map { it.id }
                 val decoded = pending.mapNotNull { row ->
-                    runCatching { json.decodeFromString<ProductEvent>(row.payloadJson) }.getOrNull()
+                    runCatching { json.decodeFromString<ProductEvent>(row.payloadJson) }
+                        .getOrNull()
+                        ?.sanitizedForProductAnalytics()
                 }
                 if (decoded.isEmpty()) {
                     dao.delete(pending.map { it.id })
                     return@repeat
                 }
-                BackendGraph.client(applicationContext).sendProductAnalyticsBatch(
-                    ProductAnalyticsBatch(
-                        platform = "android",
-                        appVersion = BuildConfig.VERSION_NAME,
-                        buildType = BuildConfig.BUILD_TYPE,
-                        installationId = scope.installationId,
-                        sessionId = scope.sessionId,
-                        events = decoded,
-                    ),
-                    expectedAccountId = scope.accountId,
-                )
-                dao.delete(pending.map { it.id })
+                try {
+                    client.sendProductAnalyticsBatch(
+                        ProductAnalyticsBatch(
+                            platform = "android",
+                            appVersion = BuildConfig.VERSION_NAME,
+                            buildType = BuildConfig.BUILD_TYPE,
+                            installationId = scope.installationId,
+                            sessionId = scope.sessionId,
+                            events = decoded,
+                        ),
+                        expectedAccountId = scope.accountId,
+                    )
+                    dao.delete(pending.map { it.id })
+                } catch (error: ReadThatHttpException) {
+                    if (!isPermanentProductAnalyticsHttpFailure(error.status)) return Result.retry()
+                    // Drop only the rejected scope, then keep draining newer valid sessions.
+                    dao.delete(pending.map { it.id })
+                }
             }
-            if (dao.count() > 0) ProductAnalyticsUploadScheduler.enqueue(applicationContext)
-            Result.success()
+            if (dao.count() > 0) Result.retry() else Result.success()
         } catch (cancellation: CancellationException) {
             throw cancellation
-        } catch (error: BackendHttpException) {
-            if (error.status in 400..499 && error.status != 408 && error.status != 429) {
-                if (attemptedIds.isNotEmpty()) dao.delete(attemptedIds)
-                else dao.oldest()?.let { dao.delete(listOf(it.id)) }
-                Result.failure()
-            } else {
-                Result.retry()
-            }
         } catch (_: Throwable) {
             Result.retry()
         }
@@ -495,3 +504,6 @@ class ProductAnalyticsUploadWorker(
         const val MAX_BATCHES_PER_RUN = 10
     }
 }
+
+internal fun isPermanentProductAnalyticsHttpFailure(status: Int): Boolean =
+    status in 400..499 && status !in setOf(408, 429)

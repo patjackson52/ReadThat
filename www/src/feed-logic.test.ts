@@ -97,15 +97,16 @@ describe("post SDUI projection", () => {
     const gallery = [image("one", 1200, 900), image("two", 900, 1200)];
     const post: Post = {
       id: "gallery", subreddit: "pics", author: "u/tester", authorId: "user-1", kind: "image", title: "Photos",
-      body: null, url: null, crosspostParentId: null, score: 1, upvotes: 1, downvotes: 0, commentCount: 0,
+      body: "The story behind this gallery.", url: null, crosspostParentId: null, score: 1, upvotes: 1, downvotes: 0, commentCount: 0,
       viewerVote: 0, version: 1, createdAt: 1_700_000_000_000, updatedAt: 1_700_000_000_000,
       media: gallery[0]!, mediaItems: gallery,
     };
 
     const projected = postGroup(post);
 
-    expect(projected.cells.map(({ type }) => type)).toEqual(["metadata", "title", "image_carousel", "actionbar"]);
-    expect(projected.cells[2]).toMatchObject({
+    expect(projected.cells.map(({ type }) => type)).toEqual(["metadata", "title", "text", "image_carousel", "actionbar"]);
+    expect(projected.cells[2]).toMatchObject({ type: "text", body: "The story behind this gallery." });
+    expect(projected.cells[3]).toMatchObject({
       type: "image_carousel",
       items: [{ mediaId: "one" }, { mediaId: "two" }],
     });

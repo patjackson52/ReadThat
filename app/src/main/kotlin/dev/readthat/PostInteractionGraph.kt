@@ -6,6 +6,7 @@ import dev.readthat.core.post.PostInteractionRepository
 import dev.readthat.core.post.PostVoteRemoteSource
 import dev.readthat.data.backend.BackendGraph
 import dev.readthat.data.db.AppDatabase
+import dev.readthat.data.db.AndroidDatabaseProvider
 import dev.readthat.data.db.CacheScope
 import dev.readthat.data.sync.FeedSyncScheduler
 import kotlinx.serialization.json.buildJsonObject
@@ -25,7 +26,7 @@ object PostInteractionGraph {
         val backend = BackendGraph.repository(context)
         val client = BackendGraph.client(context)
         return PostInteractionRepository(
-            db = AppDatabase.get(context),
+            db = AndroidDatabaseProvider.get(context),
             remote = PostVoteRemoteSource { postId, value, mutationId ->
                 val response = client.requestJson(
                     method = "PUT",

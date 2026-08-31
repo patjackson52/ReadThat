@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The system camera can write only to this cache subtree. Successful captures are moved
+         into no-backup outbox storage before entering shared draft state. -->
+    <cache-path
+        name="readthat_camera"
+        path="readthat-camera-captures/" />
+</paths>

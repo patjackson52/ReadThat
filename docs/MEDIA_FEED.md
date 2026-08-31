@@ -27,6 +27,13 @@ precede and follow it in that normal-feed generation.
   adjacent sources and posters are warmed before they become current. Video uses
   aspect-ratio-preserving fit: landscape fills width, portrait fills height, and
   the other axis is letterboxed so the complete encoded frame remains visible.
+- Visible shared chrome exposes accessible play/pause, mute/unmute, and replay
+  controls over the native player. Turning autoplay off prevents unsolicited
+  playback but never disables an explicit Play request. Manual play keeps the
+  resolved data-saver/ABR buffer policy and reuses the leased player plus the
+  exact prefetched native source/asset.
+- The top-right overflow is functional: it opens post/comments, native sharing,
+  or the current community. It never renders a control with an empty callback.
 - Username opens public profile. Back/X returns to the prior feed and its saved
   scroll state. Pager position is stored in `SavedStateHandle`.
 - Title, body, and comments open an app-hosted Material bottom sheet. The sheet
@@ -37,21 +44,22 @@ precede and follow it in that normal-feed generation.
 ## Gradle and layering
 
 ```text
-:app (navigation, bottom-sheet host, BackendClient adapter)
-  +-- :feature:mediafeed (UI, typed domain model, Pager/RemoteMediator)
-  +-- :feature:feed      (SDUI normal feed)
-  +-- :feature:comments  (reused detail/comment composition)
-  +-- :core:post         (shared optimistic post mutations)
-  +-- :core:data         (shared Room schema)
-  +-- :core:media        (one player and video L2)
-  +-- :core:network      (one process transport)
+:feature:app-ui (shared navigation and detail-sheet orchestration)
+  +-- :feature:mediafeed-ui (KMP Pager, gallery, controls, prefetch plan)
+  +-- :feature:detail-ui    (shared detail/comment composition)
+  +-- :core:client          (KMP MediaFeed ViewModel/repository/RemoteMediator)
+  +-- :core:data            (Room 3 KMP schema and Paging source)
+  +-- :core:media-ui        (common ownership contract; Media3/AVPlayer actuals)
+  +-- :core:image-ui        (common cache contract; native decoders)
+  +-- :core:network         (one process API/image/poster transport)
 ```
 
-There are no feature-to-feature dependencies. `:app` adapts the shared
-`BackendClient` to `MediaFeedRemoteSource` and hosts cross-feature navigation
-and the bottom sheet. The feature owns typed media models because this surface
-has a stable client-known composition; the heterogeneous normal feed remains
-SDUI.
+There are no feature-to-feature implementation dependencies. `:feature:app-ui`
+hosts cross-feature navigation and the detail sheet; Android and iOS inject only
+native share presentation and the iOS image byte loader. Typed media models,
+Paging/Room state, immersive composition, playback intent, and preload planning
+are KMP. Media3 and AVPlayer remain optimized platform actuals behind one
+contract; the heterogeneous normal feed remains SDUI.
 
 ### Cross-surface ordering handoff
 
@@ -82,8 +90,11 @@ have changed between requests.
 
 ## Backend/client contract
 
-`GET /v1/feeds/media` is a separate typed projection over the same ranking and
-ACL policy as `GET /v1/feed`.
+`GET /v1/feeds/media` is a separate typed projection over the same per-kind
+ranking and ACL policy as `GET /v1/feed`. It merges independent image/video
+keysets with video at alternating three/four-item intervals when both kinds are
+available. A sparse community returns its available media rather than importing
+out-of-scope posts.
 
 Query parameters:
 
@@ -135,9 +146,9 @@ single-photo and pre-gallery payloads retain identical behavior.
 
 For deep links or entry points without a normal-feed context, the first typed
 response places a valid anchor first and excludes it from the ranked walk. The
-signed cursor binds schema version, snapshot admission time,
-personalized rank, post-id tie breaker, community scope, anchor, and a keyed
-viewer audience. Replaying it under another viewer or scope returns
+signed cursor binds schema version, snapshot admission time, independently
+advanced image/video rank and post-id keysets, editorial offset, community
+scope, anchor, and a keyed viewer audience. Replaying it under another viewer or scope returns
 `400 invalid_cursor`. A non-advancing cursor is rejected client-side.
 
 This is a separate endpoint, not a separate ranking service. It avoids shipping
@@ -199,12 +210,15 @@ identify the rendition (`feed` versus `detail`). MediaFeed warms every photo in
 the current/adjacent gallery window plus upcoming image/poster requests, retaining their disposable
 handles and cancelling requests as the window moves or the screen disposes.
 
-Videos reuse one `VideoPlaybackCoordinator`, one lazy ExoPlayer, the shared
-network engine, and one bounded Media3 `SimpleCache`. MediaFeed has higher
-ownership priority than inline Feed and lower priority than full Detail. Owner-
-scoped preload requests prevent one disposed destination from clearing another
+Android videos reuse one `VideoPlaybackCoordinator`, one lazy ExoPlayer, the
+shared network engine, and one bounded Media3 `SimpleCache`. iOS mirrors the
+same owner priorities with one AVPlayer and a bounded `AVURLAsset` window; the
+exact warmed asset becomes the next AVPlayerItem. MediaFeed has higher ownership
+priority than inline Feed and lower priority than full Detail. Owner-scoped
+preload requests prevent one disposed destination from clearing another
 destination's window. At most one decoder exists; the current and adjacent
-window uses Media3 preload tiers and a 12 MiB aggregate preload target.
+window uses Media3 preload tiers and a 12 MiB aggregate target on Android, and
+native AVFoundation buffering on iOS.
 
 Playback requires both a RESUMED Compose lifecycle and focused window. Process
 background pauses playback and disables preload traffic. `TRIM_MEMORY_UI_HIDDEN`
@@ -222,6 +236,7 @@ and pre-cache helpers propagate coroutine cancellation.
 | `media_feed_time_spent` | monotonic duration for each visible MediaFeed visit segment |
 | `video_time_to_first_frame` | player prepare/switch to first rendered frame, surface `MEDIA` |
 | `video_rebuffer` | post-first-frame BUFFERING to READY, surface `MEDIA` |
+| `interaction_to_next_frame` | bounded play/pause/replay/mute/menu/navigation action to the next Compose frame |
 
 Only allowlisted names and bounded dimensions are uploaded. Content identifiers
 use the existing server-side pseudonymization path; titles, usernames, URLs,
@@ -238,7 +253,10 @@ cursors, and competing Pager serialization. `PostInteractionRepositoryTest` cove
 state/outbox commit, cancellation, offline retention, and late-ACK races. The
 Worker integration test covers typed media filtering, exact anchor placement,
 pagination without duplicates, stable media cache keys, and viewer-bound cursor
-rejection.
+rejection. `SharedMediaFeedPolicyTest` covers gallery-aware preload focus,
+bounded poster windows, playback-control state, and bounded telemetry labels;
+`PlatformVideoSecurityTest` proves cleartext rejection and the distinction
+between autoplay policy and an explicit play request.
 
 ## Primary references
 

@@ -5,7 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.mediafeed.domain.MediaFeedItem
 import dev.readthat.mediafeed.domain.MediaFeedLaunchContext
 import dev.readthat.mediafeed.domain.MediaFeedPage
@@ -115,7 +115,7 @@ class MediaFeedRepository(
     private suspend fun seedIfEmpty(context: MediaFeedLaunchContext) {
         if (mediaDao.entryCount(accountId, scope.databaseId) > 0) return
         val now = System.currentTimeMillis()
-        db.withTransaction {
+        db.withWriteTransaction {
             mediaDao.upsertContent(context.items.map { item ->
                 MediaPostContentEntity(
                     accountId = accountId,

@@ -1,6 +1,6 @@
 package dev.readthat.communitydetail.data
 
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.communitydetail.domain.CommunityDetail
 import dev.readthat.communitydetail.domain.CommunityDetailRemoteSource
 import dev.readthat.communitydetail.domain.CommunityRule

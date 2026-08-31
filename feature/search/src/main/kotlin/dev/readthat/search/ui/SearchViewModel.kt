@@ -45,7 +45,7 @@ data class SearchUiState(
 }
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class SearchViewModel(private val repository: SearchRepository) : ViewModel() {
+class LegacySearchViewModel(private val repository: SearchRepository) : ViewModel() {
     private val mutableState = MutableStateFlow(SearchUiState())
     val state = mutableState.asStateFlow()
     private var suggestionJob: Job? = null

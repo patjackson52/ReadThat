@@ -1,6 +1,6 @@
 package dev.readthat.core.post
 
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.observability.PerformanceSurface
 import dev.readthat.data.db.AppDatabase

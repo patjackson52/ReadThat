@@ -31,7 +31,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 import kotlinx.serialization.json.Json
@@ -184,7 +184,7 @@ class FeedRepository(
         anchorPostId: String,
         visibleFallback: PostTransitionPreview,
     ): NormalFeedMediaContext = withContext(io) {
-        val snapshot = db.withTransaction {
+        val snapshot = db.withWriteTransaction {
             dao.orderedGroups(accountId, feedId) to dao.remoteKey(feedId, accountId)?.nextCursor
         }
         val cachedMedia = snapshot.first.mapNotNull { row ->
@@ -242,7 +242,7 @@ class FeedRepository(
         val nextVote = if (currentVote == requestedValue) 0 else requestedValue
         val base = current?.likeCount ?: 0
         val mutationId = UUID.randomUUID().toString()
-        db.withTransaction {
+        db.withWriteTransaction {
             dao.putState(ItemStateEntity(
                 itemId = itemId,
                 likeCount = base - currentVote + nextVote,

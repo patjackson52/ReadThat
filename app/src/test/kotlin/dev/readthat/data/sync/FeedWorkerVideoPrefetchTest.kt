@@ -3,6 +3,9 @@ package dev.readthat.data.sync
 import dev.readthat.domain.WireCell
 import dev.readthat.domain.WireFeedPage
 import dev.readthat.domain.WireGroup
+import dev.readthat.shared.BackgroundImagePrefetchRequest
+import dev.readthat.shared.BackgroundVideoPrefetchRequest
+import dev.readthat.shared.backgroundFeedMediaPlan
 import dev.readthat.shared.videoPosterCacheKey
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -19,24 +22,30 @@ class FeedWorkerVideoPrefetchTest {
             nextCursor = null,
         )
 
-        val sources = page.startupVideoSources()
-        val posters = page.startupVideoPosters()
+        val plan = page.backgroundFeedMediaPlan()
 
-        assertEquals(1, sources.size)
-        assertEquals("post:video-1", sources.single().cacheKey)
-        assertEquals("https://cdn/one.m3u8", sources.single().hlsUrl)
+        assertEquals(
+            listOf(BackgroundVideoPrefetchRequest(
+                "https://cdn/one.m3u8",
+                "https://cdn/one.m3u8",
+                "post:video-1",
+            )),
+            plan.videos,
+        )
         assertEquals(
             listOf(
-                StartupVideoPoster(
+                BackgroundImagePrefetchRequest(
                     "https://cdn/one.jpg",
                     videoPosterCacheKey("post:video-1", "https://cdn/one.jpg"),
+                    true,
                 ),
-                StartupVideoPoster(
+                BackgroundImagePrefetchRequest(
                     "https://cdn/two.jpg",
                     videoPosterCacheKey("post:video-2", "https://cdn/two.jpg"),
+                    true,
                 ),
             ),
-            posters,
+            plan.images,
         )
     }
 

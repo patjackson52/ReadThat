@@ -6,6 +6,21 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ModelsTest {
+    @Test
+    fun `auth form is immutable while a submit is in flight`() {
+        val submitting = AuthForm(
+            mode = AuthMode.Login,
+            username = "valid_user",
+            password = "1234567890",
+            submitting = true,
+        )
+
+        assertEquals(submitting, reduceAuth(submitting, AuthAction.SetMode(AuthMode.Register)))
+        assertEquals(submitting, reduceAuth(submitting, AuthAction.SetUsername("other_user")))
+        assertEquals(submitting, reduceAuth(submitting, AuthAction.SetDisplayName("Other")))
+        assertEquals(submitting, reduceAuth(submitting, AuthAction.SetPassword("0987654321")))
+    }
+
     @Test fun authValidationMatchesBackendContract() {
         assertFalse(AuthForm(username = "ab", displayName = "Name", password = "1234567890").canSubmit)
         assertTrue(AuthForm(username = "valid_user", displayName = "Name", password = "1234567890").canSubmit)
@@ -52,6 +67,15 @@ class ModelsTest {
         assertEquals(1_500_000L, policy.preferredPeakBitrate)
     }
 
+    @Test fun physicalMemoryMapsToConservativeStandardAndHighEndMediaTiers() {
+        val gib = 1_024L * 1_024L * 1_024L
+
+        assertEquals(DeviceTier.Standard, deviceTierForPhysicalMemory(0L))
+        assertEquals(DeviceTier.LowMemory, deviceTierForPhysicalMemory(3L * gib))
+        assertEquals(DeviceTier.Standard, deviceTierForPhysicalMemory(4L * gib))
+        assertEquals(DeviceTier.HighEnd, deviceTierForPhysicalMemory(6L * gib))
+    }
+
     @Test fun videoPolicyAutoplaysAndSizesCacheForUnmeteredHighEndDevice() {
         val policy = VideoPolicyResolver.resolve(
             settings = AppSettings(),
@@ -74,5 +98,20 @@ class ModelsTest {
         assertTrue(stale.startsWith("post:1:poster:v3:"))
         assertFalse(stale == current)
         assertEquals(current, videoPosterCacheKey("post:1", "https://stream/poster.jpg?time=5s"))
+    }
+
+    @Test fun streamPreviewNormalizesToPlaybackStartWithoutDroppingSizingOrTokens() {
+        assertEquals(
+            "https://customer.example.cloudflarestream.com/id/thumbnails/thumbnail.jpg" +
+                "?time=0s&width=608&height=1080&token=secure",
+            firstFrameVideoPreviewUrl(
+                "https://customer.example.cloudflarestream.com/id/thumbnails/thumbnail.jpg" +
+                    "?time=5s&width=608&height=1080&token=secure",
+            ),
+        )
+        assertEquals(
+            "https://example.test/custom-poster.jpg?time=5s",
+            firstFrameVideoPreviewUrl("https://example.test/custom-poster.jpg?time=5s"),
+        )
     }
 }

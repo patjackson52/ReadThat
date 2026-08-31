@@ -1,7 +1,7 @@
 package dev.readthat.mediafeed
 
 import androidx.paging.testing.asSnapshot
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.mediafeed.data.MediaFeedRemoteSource
 import dev.readthat.mediafeed.data.MediaFeedRepository

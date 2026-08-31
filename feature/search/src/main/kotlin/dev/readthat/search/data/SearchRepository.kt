@@ -9,7 +9,7 @@ import androidx.paging.PagingData
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.paging.map
-import androidx.room.withTransaction
+import androidx.room3.withWriteTransaction
 import dev.readthat.search.domain.SearchDiscover
 import dev.readthat.search.domain.SearchItem
 import dev.readthat.search.domain.SearchPage
@@ -192,7 +192,7 @@ private class SearchRemoteMediator(
         return try {
             val page = remote.search(request, cursor, state.config.pageSize)
             val now = nowMillis()
-            db.withTransaction {
+            db.withWriteTransaction {
                 val start = if (loadType == LoadType.REFRESH) 0 else dao.maxSortIndex(accountId, queryKey) + 1
                 val rows = page.items.mapIndexed { index, item ->
                     SearchResultEntity(

@@ -1,7 +1,7 @@
 package dev.readthat.communities.data
 
 import android.content.Context
-import androidx.room.Room
+import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
 import dev.readthat.communities.domain.CommunityDrawerPage
 import dev.readthat.communities.domain.CommunityDrawerRemoteResult
