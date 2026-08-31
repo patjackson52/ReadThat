@@ -4,9 +4,10 @@ This document is the enforceable architecture contract for the sample. The
 Android and iOS clients use feature-oriented Gradle modules, layered MVVM,
 unidirectional data flow, a memory-plus-disk cache for structured data, and
 durable writes. Room 3, shared repositories/ViewModels, and the Compose
-Multiplatform surface form the iOS implementation; the established Android
-feature UI remains the production entrypoint during incremental migration. The
-feed is server-driven; post detail and comments remain typed domain UI.
+Multiplatform surface form both product implementations. Android `:app` remains
+the packaging and native-scheduler host, while its established feature UI is a
+compiled reference and explicit rollback path rather than the default renderer.
+The feed is server-driven; post detail and comments remain typed domain UI.
 
 ## Gradle module graph
 
