@@ -32,6 +32,13 @@ sealed interface CommentNode {
         val authorAvatarUrl: String? = null,
         /** Deliberately separate from updatedAt: votes also update comment rows. */
         val isEdited: Boolean = false,
+        /**
+         * Comment nodes materialized below this node. Load-more cursors are excluded because those
+         * comments were not visible before a collapse. The server supplies this with the heap-built
+         * tree; the default keeps locally assembled and older cached trees correct in one bottom-up
+         * pass as their nodes are constructed.
+         */
+        val descendantCount: Int = materializedDescendantCount(children),
     ) : CommentNode
 
     /**
@@ -93,7 +100,18 @@ data class RawComment(
     val authorDisplayName: String = author,
     val authorAvatarUrl: String? = null,
     val isEdited: Boolean = false,
+    val descendantCount: Int = 0,
 )
+
+internal fun materializedDescendantCount(children: List<CommentNode>): Int = children.sumOf { child ->
+    when (child) {
+        is CommentNode.Comment -> 1 + child.descendantCount
+        is CommentNode.LoadMore -> 0
+    }
+}
+
+internal fun CommentNode.Comment.withChildren(children: List<CommentNode>): CommentNode.Comment =
+    copy(children = children, descendantCount = materializedDescendantCount(children))
 
 /**
  * Wire shape of a load-more response — flat, parent-linked, /api/morechildren style.

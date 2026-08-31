@@ -11,7 +11,7 @@ depends on it for composition, never the other way around.
 
 Since the first revision this module gained a **working "x more replies"** (flat parent-linked `loadMore` + pure tree splicer + per-cursor state machine), **"continue this thread"** at the depth cap (re-rooted permalink fetch), a **coalescing repository** (in-flight prefetch shared with tap-through), bounded L1 trees and headers, a normalized Room L2, a **two-stage UiState derivation** (flag churn can never re-run the flatten, and the flatten runs off the main thread), the **user-vs-auto collapse split** (merger artifacts are not user intent: never persisted, never announced to TalkBack), and **`SavedStateHandle` persistence** of the user's collapse set across process death. Each behavior has a JVM test.
 
-**Visual parity pass (2026-08-27):** `animateItem()` on every row (expansion slides children in, collapse closes the list up, spliced replies animate into place — the payoff of stable keys), **one thread rail per ancestor depth** drawn in `drawBehind` (rails are paint, not layout: no nested composables, no intrinsic passes, lines run unbroken through row padding), collapsed comments keep a **one-line grayed body preview** (official-app behavior; the `+N` badge stays as a deliberate extra — it is what the accessibility `stateDescription` announces), and **compact age labels** (`5m`/`1h`/`2d`) formatted client-side from server minutes — hash-derived in the fake so the extra field cannot shift the deterministic rng sequence that shapes the tree.
+**Visual parity pass (2026-08-27):** `animateItem()` on every row (expansion slides children in, collapse closes the list up, spliced replies animate into place — the payoff of stable keys), **one thread rail per ancestor depth** drawn in `drawBehind` (rails are paint, not layout: no nested composables, no intrinsic passes, lines run unbroken through row padding), collapsed comments keep a **one-line grayed body preview** plus a clear **“Show N hidden replies”** affordance, and **compact age labels** (`5m`/`1h`/`2d`) formatted client-side from server minutes — hash-derived in the fake so the extra field cannot shift the deterministic rng sequence that shapes the tree.
 
 ---
 
@@ -48,11 +48,20 @@ Depth is capped (Reddit uses **10**) *"to limit the computational cost and make 
 ### 2. Flattening a recursive tree — harder than the feed's
 `CommentFlattener` turns the tree into a flat `List<CommentRow>` carrying **depth** (for indentation), honouring:
 
-- **collapse hides an entire subtree** — the collapsed node stays visible (you need something to tap) and reports `collapsedDescendants` for the "+12" badge
+- **collapse hides an entire subtree** — the collapsed node stays visible (you need something to tap) and reports the server-authored `descendantCount` in a “Show N hidden replies” control
 - **`load_more` cursors** render at the depth of the children they stand in for
 - **stable keys**, same as the feed — duplicate keys crash `LazyColumn`
 
 Implemented **iteratively with an explicit stack, not recursively**. There's a test that flattens a **5,000-deep** thread; a recursive walk would `StackOverflowError`.
+
+The hidden count adds no client tree walk. While the server assembles the nodes
+already selected by its max-heap, each parent sums `1 + child.descendantCount`
+bottom-up. This is O(n) inside work the builder already performs, is cached with
+the standard 8/200 responses, and makes collapse lookup O(1). Counts deliberately
+exclude `load_more` cursors: those comments were not visible before the collapse.
+Load-more responses use the heap's parent-before-child order to compute the same
+metadata in one reverse pass; optimistic tree edits update only their copied
+ancestor spine.
 
 Room encoding/decoding, load-more splicing, voting, and reply insertion are also
 iterative. The mutation tests path-copy a 1,500-level thread without consuming

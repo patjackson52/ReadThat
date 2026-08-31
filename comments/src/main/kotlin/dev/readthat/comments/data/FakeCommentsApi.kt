@@ -175,7 +175,10 @@ open class FakeCommentsApi(
             )
         }
 
-        return LoadMoreResponse(comments = out, cursors = cursors)
+        return LoadMoreResponse(
+            comments = out.withSelectedDescendantCounts(),
+            cursors = cursors,
+        )
     }
 
     /** True depth of a raw comment — the server derives it by walking the parent chain. */
@@ -343,6 +346,21 @@ open class FakeCommentsApi(
         val depth: Int,
         val truncatedChildIds: List<String> = emptyList(),
     )
+
+    /** Heap selection emits parents before children; a reverse pass mirrors the Worker contract. */
+    private fun List<RawComment>.withSelectedDescendantCounts(): List<RawComment> {
+        val selectedIds = mapTo(HashSet(size)) { it.id }
+        val counts = HashMap<String, Int>(size)
+        for (index in indices.reversed()) {
+            val raw = this[index]
+            val count = counts[raw.id] ?: 0
+            counts[raw.id] = count
+            raw.parentId?.takeIf { it in selectedIds }?.let { parentId ->
+                counts[parentId] = (counts[parentId] ?: 0) + 1 + count
+            }
+        }
+        return map { it.copy(descendantCount = counts[it.id] ?: 0) }
+    }
 
     companion object {
         const val DEFAULT_MAX_DEPTH = 10

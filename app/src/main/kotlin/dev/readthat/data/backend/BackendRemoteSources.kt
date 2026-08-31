@@ -488,6 +488,7 @@ private data class ApiComment(
     val displayName: String = author,
     val avatarUrl: String? = null,
     val isEdited: Boolean = false,
+    val descendantCount: Int = 0,
     val children: List<ApiCommentNode>,
 ) : ApiCommentNode {
     override fun toDomain(): CommentNode = CommentNode.Comment(
@@ -501,6 +502,7 @@ private data class ApiComment(
         authorDisplayName = displayName,
         authorAvatarUrl = avatarUrl,
         isEdited = isEdited,
+        descendantCount = descendantCount,
     )
 }
 
@@ -528,6 +530,7 @@ private data class ApiRawComment(
     val displayName: String = author,
     val avatarUrl: String? = null,
     val isEdited: Boolean = false,
+    val descendantCount: Int = 0,
 ) {
     fun toDomain() = RawComment(
         id = id,
@@ -540,6 +543,7 @@ private data class ApiRawComment(
         authorDisplayName = displayName,
         authorAvatarUrl = avatarUrl,
         isEdited = isEdited,
+        descendantCount = descendantCount,
     )
 }
 

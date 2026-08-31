@@ -56,6 +56,8 @@ object CommentTreeSplicer {
         val assembled = HashMap<String, CommentNode.Comment>()
         for (i in response.comments.indices.reversed()) {
             val raw = response.comments[i]
+            val children = childrenByParent[raw.id].orEmpty().map { assembled.getValue(it.id) } +
+                cursorsByParent[raw.id].orEmpty()
             assembled[raw.id] = CommentNode.Comment(
                 id = raw.id,
                 author = raw.author,
@@ -66,8 +68,8 @@ object CommentTreeSplicer {
                 authorDisplayName = raw.authorDisplayName,
                 authorAvatarUrl = raw.authorAvatarUrl,
                 isEdited = raw.isEdited,
-                children = childrenByParent[raw.id].orEmpty().map { assembled.getValue(it.id) } +
-                    cursorsByParent[raw.id].orEmpty(),
+                descendantCount = maxOf(raw.descendantCount, materializedDescendantCount(children)),
+                children = children,
             )
         }
 
@@ -101,13 +103,13 @@ object CommentTreeSplicer {
 
         var childId: String = cursor.parentId
         var rebuilt: CommentNode.Comment =
-            byId.getValue(childId).let { it.copy(children = replaceIn(it.children)) }
+            byId.getValue(childId).let { it.withChildren(replaceIn(it.children)) }
 
         while (true) {
             val parentId = parentOf[childId] ?: break
             val parent = byId.getValue(parentId)
-            rebuilt = parent.copy(
-                children = parent.children.map { if (it.id == childId) rebuilt else it },
+            rebuilt = parent.withChildren(
+                parent.children.map { if (it.id == childId) rebuilt else it },
             )
             childId = parentId
         }

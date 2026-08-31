@@ -826,6 +826,26 @@ private fun CommentItem(
                 }
             }
 
+            collapsedCommentCountLabel(row.collapsedDescendants)?.takeIf { row.isCollapsed }?.let { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier
+                        .padding(
+                            start = 43.dp + indentFor(row.renderDepth),
+                            bottom = 6.dp,
+                        )
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable(
+                            onClickLabel = label,
+                            role = Role.Button,
+                        ) { onToggle(row.key) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+
             if (expansionContent != null && !row.isCollapsed) {
                 ExpansionReveal {
                     Column(Modifier.fillMaxWidth()) {
@@ -847,6 +867,12 @@ private fun CommentItem(
             }
         }
     }
+}
+
+internal fun collapsedCommentCountLabel(count: Int): String? = when (count) {
+    1 -> "Show 1 hidden reply"
+    in 2..Int.MAX_VALUE -> "Show $count hidden replies"
+    else -> null
 }
 
 @Composable

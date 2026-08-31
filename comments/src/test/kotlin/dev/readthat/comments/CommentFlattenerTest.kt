@@ -57,6 +57,24 @@ class CommentFlattenerTest {
     }
 
     @Test
+    fun `collapse reads the server-authored descendant count without walking children`() {
+        val serverCounted = CommentNode.Comment(
+            id = "a",
+            author = "u/a",
+            body = "body",
+            score = 1,
+            descendantCount = 15,
+        )
+
+        val row = CommentFlattener.flatten(
+            tree(serverCounted),
+            collapsedIds = setOf("a"),
+        ).rows.single() as CommentRow.Comment
+
+        assertEquals(15, row.collapsedDescendants)
+    }
+
+    @Test
     fun `hiddenByCollapse totals what the user cannot see`() {
         val t = tree(c("a", c("b", c("c")), c("d")), c("e", c("f")))
 

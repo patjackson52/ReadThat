@@ -1,6 +1,7 @@
 package dev.readthat.comments
 
 import dev.readthat.comments.domain.CommentRow
+import dev.readthat.comments.ui.collapsedCommentCountLabel
 import dev.readthat.comments.ui.expansionDescendantKeys
 import dev.readthat.comments.ui.nextRootCommentListIndex
 import org.junit.Assert.assertEquals
@@ -8,6 +9,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CommentExpansionAnimationTest {
+    @Test
+    fun `collapsed count label is concise and handles pluralization`() {
+        assertEquals(null, collapsedCommentCountLabel(0))
+        assertEquals("Show 1 hidden reply", collapsedCommentCountLabel(1))
+        assertEquals("Show 15 hidden replies", collapsedCommentCountLabel(15))
+    }
+
     @Test
     fun `expansion reveal includes only the tapped comment subtree`() {
         val rows = listOf(

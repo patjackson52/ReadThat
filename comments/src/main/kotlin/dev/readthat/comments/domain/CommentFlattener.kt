@@ -3,8 +3,8 @@ package dev.readthat.comments.domain
 /**
  * A single row in the rendered list.
  *
- * [renderDepth] drives indentation. [collapsedDescendants] is what the "+12" badge on a
- * collapsed comment shows.
+ * [renderDepth] drives indentation. [collapsedDescendants] is what the collapsed-comment
+ * affordance shows.
  */
 sealed interface CommentRow {
     val key: String
@@ -99,7 +99,10 @@ object CommentFlattener {
             when (node) {
                 is CommentNode.Comment -> {
                     val collapsed = node.id in collapsedIds
-                    val descendants = if (collapsed) countDescendants(node) else 0
+                    // Authored during the server's existing bottom-up heap-tree assembly. Reading
+                    // it here keeps a collapse O(1) instead of walking the hidden subtree on the
+                    // client; flattening can stop as soon as it reaches the collapsed boundary.
+                    val descendants = if (collapsed) node.descendantCount.coerceAtLeast(0) else 0
 
                     rows += CommentRow.Comment(
                         key = node.id,
@@ -166,23 +169,6 @@ object CommentFlattener {
             visibleCommentCount = visible,
             hiddenByCollapse = hidden,
         )
-    }
-
-    /** Descendant Comment nodes, excluding LoadMore cursors and the node itself. */
-    fun countDescendants(node: CommentNode.Comment): Int {
-        var total = 0
-        val stack = ArrayDeque<CommentNode>()
-        node.children.forEach(stack::addLast)
-        while (stack.isNotEmpty()) {
-            when (val n = stack.removeLast()) {
-                is CommentNode.Comment -> {
-                    total++
-                    n.children.forEach(stack::addLast)
-                }
-                is CommentNode.LoadMore -> Unit
-            }
-        }
-        return total
     }
 
     internal fun compactAge(minutes: Int): String = when {

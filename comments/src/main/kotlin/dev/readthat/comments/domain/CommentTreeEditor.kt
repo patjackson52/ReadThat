@@ -15,7 +15,7 @@ object CommentTreeEditor {
     ): List<CommentNode> {
         if (parentId == null) return roots + created
         return edit(roots, parentId) { parent ->
-            parent.copy(children = parent.children + created)
+            parent.withChildren(parent.children + created)
         }
     }
 
@@ -43,7 +43,7 @@ object CommentTreeEditor {
             if (node is CommentNode.Comment) {
                 if (node.children.any { it.id == commentId }) {
                     return edit(roots, node.id) { parent ->
-                        parent.copy(children = parent.children.filterNot { it.id == commentId })
+                        parent.withChildren(parent.children.filterNot { it.id == commentId })
                     }
                 }
                 node.children.forEach(stack::addLast)
@@ -72,14 +72,15 @@ object CommentTreeEditor {
         }
 
         val target = comments[targetId] ?: return roots
-        var rebuilt = transform(target)
+        val transformed = transform(target)
+        var rebuilt = transformed.withChildren(transformed.children)
         var rebuiltId = targetId
 
         while (true) {
             val parentId = parentOf[rebuiltId] ?: break
             val parent = comments.getValue(parentId)
-            rebuilt = parent.copy(
-                children = parent.children.map { child ->
+            rebuilt = parent.withChildren(
+                parent.children.map { child ->
                     if (child.id == rebuiltId) rebuilt else child
                 },
             )
