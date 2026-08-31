@@ -33,7 +33,15 @@ import dev.readthat.observability.ProductEventName
 import dev.readthat.observability.ProductEventReason
 import dev.readthat.observability.ProductSurface
 import dev.readthat.observability.performanceTimer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.cinterop.ExperimentalForeignApi
 import platform.AVFoundation.AVPlayer
 import platform.AVFoundation.AVPlayerItem
@@ -203,6 +211,30 @@ actual fun PlatformVideoPlayer(
             playWhenReady,
             muted,
             continueExistingPlayback,
+            durationHintMs = media.durationSeconds?.times(1_000L),
+            onPlaybackSnapshot = { snapshot ->
+                val playbackState = snapshot.state
+                if (playbackState == PlatformPlaybackState.Buffering && reportedFirstFrame) {
+                    if (rebufferTimer == null) rebufferTimer = performanceTimer()
+                } else if (playbackState == PlatformPlaybackState.Playing) {
+                    rebufferTimer?.let { timer ->
+                        PerformanceTelemetry.duration(
+                            PerformanceMetric.VIDEO_REBUFFER,
+                            timer,
+                            surface = role.performanceSurface,
+                            attributes = mapOf("content_kind" to "video"),
+                        )
+                    }
+                    rebufferTimer = null
+                } else {
+                    rebufferTimer = null
+                }
+                playbackAnalytics.update(
+                    state = playbackState,
+                    positionMs = snapshot.positionMs,
+                )
+                currentOnPlaybackState.value(snapshot)
+            },
             onTerminalFailure = {
                 val positionMs = IosVideoPlaybackCoordinator.player.positionMillis()
                 val durationMs = IosVideoPlaybackCoordinator.player.durationMillis()
@@ -233,6 +265,9 @@ actual fun PlatformVideoPlayer(
     SideEffect { controller.showsPlaybackControls = showControls }
     LaunchedEffect(controller, owner, url) {
         while (!reportedFirstFrame) {
+            // Suspend without a timer while a higher-priority surface owns the process player.
+            IosVideoPlaybackCoordinator.awaitOwnership(owner, url)
+            withFrameNanos { }
             if (IosVideoPlaybackCoordinator.owns(owner, url) && controller.readyForDisplay) {
                 reportedFirstFrame = true
                 IosVideoPlaybackCoordinator.markRendered(url)
@@ -254,49 +289,6 @@ actual fun PlatformVideoPlayer(
                 onFirstFrame()
                 break
             }
-            delay(16)
-        }
-    }
-    LaunchedEffect(owner, url, playbackAnalytics) {
-        while (true) {
-            if (IosVideoPlaybackCoordinator.owns(owner, url)) {
-                val positionMs = IosVideoPlaybackCoordinator.player.positionMillis()
-                val durationMs = IosVideoPlaybackCoordinator.player.durationMillis()
-                    ?: media.durationSeconds?.times(1_000L)
-                val nativeStatus = IosVideoPlaybackCoordinator.player.timeControlStatus
-                val playbackState = when {
-                    nativeStatus == AVPlayerTimeControlStatusPlaying -> PlatformPlaybackState.Playing
-                    nativeStatus == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate ->
-                        PlatformPlaybackState.Buffering
-                    durationMs != null && positionMs >= durationMs - 500L -> PlatformPlaybackState.Ended
-                    else -> PlatformPlaybackState.Paused
-                }
-                if (playbackState == PlatformPlaybackState.Buffering && reportedFirstFrame) {
-                    if (rebufferTimer == null) rebufferTimer = performanceTimer()
-                } else if (playbackState == PlatformPlaybackState.Playing) {
-                    rebufferTimer?.let { timer ->
-                        PerformanceTelemetry.duration(
-                            PerformanceMetric.VIDEO_REBUFFER,
-                            timer,
-                            surface = role.performanceSurface,
-                            attributes = mapOf("content_kind" to "video"),
-                        )
-                    }
-                    rebufferTimer = null
-                } else {
-                    rebufferTimer = null
-                }
-                playbackAnalytics.update(
-                    state = playbackState,
-                    positionMs = positionMs,
-                )
-                currentOnPlaybackState.value(PlatformPlaybackSnapshot(
-                    state = playbackState,
-                    positionMs = positionMs,
-                    durationMs = durationMs,
-                ))
-            }
-            delay(100)
         }
     }
     DisposableEffect(controller, owner, url, playbackAnalytics) {
@@ -493,6 +485,18 @@ actual fun PlatformVideoPreloadWindow(
     }
 }
 
+/**
+ * A progress publisher exists only while the foreground process player has an owner and an
+ * active play intent. Paused/ended surfaces receive an edge snapshot without retaining a timer.
+ */
+internal fun shouldPublishIosPlaybackProgress(
+    hasOwner: Boolean,
+    appForeground: Boolean,
+    playbackRequested: Boolean,
+    state: PlatformPlaybackState,
+): Boolean = hasOwner && appForeground && playbackRequested &&
+    state != PlatformPlaybackState.Ended && state != PlatformPlaybackState.Error
+
 /** One native decoder/player is transferred between feed and media surfaces. */
 @OptIn(ExperimentalForeignApi::class)
 private object IosVideoPlaybackCoordinator {
@@ -504,6 +508,7 @@ private object IosVideoPlaybackCoordinator {
     private var playbackSequence = 0L
     private var preloadSequence = 0L
     private var currentOwner: Any? = null
+    private val currentOwnerState = MutableStateFlow<Any?>(null)
     private var currentPrimaryUrl: String? = null
     private var currentUrl: String? = null
     private var attemptedFallback = false
@@ -512,6 +517,8 @@ private object IosVideoPlaybackCoordinator {
     private val preloadedAssets = mutableMapOf<String, AVURLAsset>()
     private var loopObserver: NSObjectProtocol? = null
     private var failureObserver: NSObjectProtocol? = null
+    private val snapshotScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var snapshotJob: Job? = null
 
     fun attach(
         owner: Any,
@@ -522,6 +529,8 @@ private object IosVideoPlaybackCoordinator {
         autoplay: Boolean,
         muted: Boolean,
         continueExistingPlayback: Boolean,
+        durationHintMs: Long?,
+        onPlaybackSnapshot: (PlatformPlaybackSnapshot) -> Unit,
         onTerminalFailure: () -> Unit,
     ) {
         val previous = playbackRequests[owner]
@@ -533,6 +542,8 @@ private object IosVideoPlaybackCoordinator {
             autoplay = autoplay,
             muted = muted,
             continueExistingPlayback = continueExistingPlayback,
+            durationHintMs = durationHintMs,
+            onPlaybackSnapshot = onPlaybackSnapshot,
             onTerminalFailure = onTerminalFailure,
             sequence = previous?.sequence ?: ++playbackSequence,
         )
@@ -542,6 +553,12 @@ private object IosVideoPlaybackCoordinator {
     fun owns(owner: Any, url: String): Boolean =
         currentOwner === owner && playbackRequests[owner]?.primaryUrl == url
 
+    suspend fun awaitOwnership(owner: Any, url: String) {
+        currentOwnerState.first { selected ->
+            selected === owner && playbackRequests[owner]?.primaryUrl == url
+        }
+    }
+
     fun markRendered(primaryUrl: String) {
         if (currentPrimaryUrl == primaryUrl) renderedPrimaryUrl = primaryUrl
     }
@@ -550,11 +567,17 @@ private object IosVideoPlaybackCoordinator {
         currentPrimaryUrl == primaryUrl && renderedPrimaryUrl == primaryUrl
 
     fun pause(owner: Any) {
-        if (currentOwner === owner) player.pause()
+        if (currentOwner === owner) {
+            player.pause()
+            notifyCurrentPlayback()
+        }
     }
 
     fun resume(owner: Any) {
-        if (currentOwner === owner) playbackRequests[owner]?.let(::applyPlaybackIntent)
+        if (currentOwner === owner) {
+            playbackRequests[owner]?.let(::applyPlaybackIntent)
+            notifyCurrentPlayback()
+        }
     }
 
     fun setAppForeground(foreground: Boolean) {
@@ -566,6 +589,7 @@ private object IosVideoPlaybackCoordinator {
         } else {
             playerOrNull?.pause()
             applyPreloadWindow(emptyList())
+            notifyCurrentPlayback()
         }
     }
 
@@ -589,18 +613,20 @@ private object IosVideoPlaybackCoordinator {
         }
         player.seekToTime(CMTimeMake(value = 0, timescale = 1))
         player.play()
+        notifyCurrentPlayback()
     }
 
     fun seekTo(owner: Any, url: String, positionMs: Long) {
         if (!owns(owner, url)) return
         player.seekToTime(CMTimeMake(value = positionMs.coerceAtLeast(0L), timescale = 1_000))
+        notifyCurrentPlayback()
     }
 
     fun detach(owner: Any) {
         val wasCurrent = currentOwner === owner
         playbackRequests.remove(owner)
         if (wasCurrent) {
-            currentOwner = null
+            setCurrentOwner(null)
             reconcilePlayback()
         }
     }
@@ -611,23 +637,31 @@ private object IosVideoPlaybackCoordinator {
                 .thenBy { it.value.sequence },
         )
         if (selected == null) {
+            setCurrentOwner(null)
             playerOrNull?.pause()
             loopObserver?.let(NSNotificationCenter.defaultCenter::removeObserver)
             loopObserver = null
             failureObserver?.let(NSNotificationCenter.defaultCenter::removeObserver)
             failureObserver = null
+            stopSnapshotPublication()
             return
         }
         val ownerChanged = currentOwner !== selected.key
-        currentOwner = selected.key
+        setCurrentOwner(selected.key)
         val request = selected.value
         prepare(selected.key, request, ownerChanged)
         applyPlaybackIntent(request)
+        notifyCurrentPlayback()
     }
 
     private fun applyPlaybackIntent(request: PlaybackRequest) {
         player.setMuted(request.muted)
         if (appForeground && request.autoplay) player.play() else player.pause()
+    }
+
+    private fun setCurrentOwner(owner: Any?) {
+        currentOwner = owner
+        currentOwnerState.value = owner
     }
 
     private fun prepare(owner: Any, request: PlaybackRequest, ownerChanged: Boolean) {
@@ -658,6 +692,7 @@ private object IosVideoPlaybackCoordinator {
             ) {
                 player.seekToTime(CMTimeMake(value = 0, timescale = 1))
                 player.play()
+                notifyCurrentPlayback()
             }
         } else null
         failureObserver?.let(NSNotificationCenter.defaultCenter::removeObserver)
@@ -680,7 +715,10 @@ private object IosVideoPlaybackCoordinator {
         val fallback = request.fallbackUrl
         if (currentOwner !== owner || attemptedFallback || fallback == null || fallback == currentUrl) {
             player.pause()
-            if (currentOwner === owner) request.onTerminalFailure()
+            if (currentOwner === owner) {
+                stopSnapshotPublication()
+                request.onTerminalFailure()
+            }
             return
         }
         val shouldResume = player.timeControlStatus == AVPlayerTimeControlStatusPlaying ||
@@ -690,6 +728,58 @@ private object IosVideoPlaybackCoordinator {
         player.replaceCurrentItemWithPlayerItem(AVPlayerItem(createAsset(fallback)))
         configureCurrentItem(owner, request)
         if (shouldResume) player.play() else applyPlaybackIntent(request)
+        notifyCurrentPlayback()
+    }
+
+    /**
+     * AVPlayer state is sampled once per process player, not once per composed feed cell. This
+     * covers playhead movement and time-control transitions while keeping paused surfaces idle.
+     */
+    private fun notifyCurrentPlayback() {
+        val owner = currentOwner
+        val request = owner?.let(playbackRequests::get)
+        if (owner == null || request == null) {
+            stopSnapshotPublication()
+            return
+        }
+        val positionMs = player.positionMillis()
+        val durationMs = player.durationMillis() ?: request.durationHintMs
+        val state = when {
+            player.timeControlStatus == AVPlayerTimeControlStatusPlaying ->
+                PlatformPlaybackState.Playing
+            player.timeControlStatus == AVPlayerTimeControlStatusWaitingToPlayAtSpecifiedRate ->
+                PlatformPlaybackState.Buffering
+            durationMs != null && positionMs >= durationMs - ENDED_TOLERANCE_MS ->
+                PlatformPlaybackState.Ended
+            else -> PlatformPlaybackState.Paused
+        }
+        request.onPlaybackSnapshot(PlatformPlaybackSnapshot(state, positionMs, durationMs))
+        if (shouldPublishIosPlaybackProgress(
+                hasOwner = true,
+                appForeground = appForeground,
+                playbackRequested = request.autoplay,
+                state = state,
+            )
+        ) {
+            startSnapshotPublication()
+        } else {
+            stopSnapshotPublication()
+        }
+    }
+
+    private fun startSnapshotPublication() {
+        if (snapshotJob?.isActive == true) return
+        snapshotJob = snapshotScope.launch {
+            while (isActive) {
+                delay(SNAPSHOT_INTERVAL_MS)
+                notifyCurrentPlayback()
+            }
+        }
+    }
+
+    private fun stopSnapshotPublication() {
+        snapshotJob?.cancel()
+        snapshotJob = null
     }
 
     fun updatePreloadWindow(owner: Any, urls: List<String>, role: PlatformVideoRole) {
@@ -754,6 +844,8 @@ private object IosVideoPlaybackCoordinator {
         val autoplay: Boolean,
         val muted: Boolean,
         val continueExistingPlayback: Boolean,
+        val durationHintMs: Long?,
+        val onPlaybackSnapshot: (PlatformPlaybackSnapshot) -> Unit,
         val onTerminalFailure: () -> Unit,
         val sequence: Long,
     )
@@ -763,6 +855,9 @@ private object IosVideoPlaybackCoordinator {
         val role: PlatformVideoRole,
         val sequence: Long,
     )
+
+    private const val SNAPSHOT_INTERVAL_MS = 100L
+    private const val ENDED_TOLERANCE_MS = 500L
 }
 
 private data class IosNetworkSnapshot(

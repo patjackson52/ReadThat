@@ -137,9 +137,15 @@ priority (ad detail, detail, media feed, feed); disposal of an outgoing feed can
 therefore neither pause the incoming detail owner nor clear its owner-scoped
 preload window. The exact prefetched `AVURLAsset` becomes the `AVPlayerItem`, and
 same-URL owner handoff preserves the player item, position, decoder, buffer, and
-mute state. An HLS failure gets one bounded attempt with the HTTPS fallback
-asset. Android keeps its existing HttpEngine/OkHttp + Media3 adapters and
-process-wide player/cache coordinator.
+mute state. Playback position and time-control state are sampled by one
+process-scoped publisher at 100 ms only while the foreground owner has an active
+play intent; attach, pause, seek, handoff, end, and error still publish immediate
+edge snapshots. Retained/offscreen Compose cells therefore never create their
+own progress timers, and non-owning first-frame checks suspend until ownership
+returns instead of polling.
+An HLS failure gets one bounded attempt with the HTTPS fallback asset. Android
+keeps its existing HttpEngine/OkHttp + Media3 adapters and process-wide
+player/cache coordinator.
 
 ## Shared functional surface
 

@@ -213,7 +213,10 @@ handles and cancelling requests as the window moves or the screen disposes.
 Android videos reuse one `VideoPlaybackCoordinator`, one lazy ExoPlayer, the
 shared network engine, and one bounded Media3 `SimpleCache`. iOS mirrors the
 same owner priorities with one AVPlayer and a bounded `AVURLAsset` window; the
-exact warmed asset becomes the next AVPlayerItem. MediaFeed has higher ownership
+exact warmed asset becomes the next AVPlayerItem. One coordinator-owned progress
+publisher drives shared scrubber/time state while playback advances, instead of
+starting a polling loop for every retained Compose cell. It stops on pause, end,
+error, background, and owner loss. MediaFeed has higher ownership
 priority than inline Feed and lower priority than full Detail. Owner-scoped
 preload requests prevent one disposed destination from clearing another
 destination's window. At most one decoder exists; the current and adjacent

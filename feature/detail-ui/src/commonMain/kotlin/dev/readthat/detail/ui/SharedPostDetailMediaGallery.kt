@@ -14,7 +14,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -117,10 +116,25 @@ fun SharedPostDetailMediaGallery(
                 )
             }
         }
-    }
-    if (onOpenMediaFeed != null) {
-        TextButton(onClick = onOpenMediaFeed) {
-            Text(if (mediaItems.size > 1) "Open gallery in media feed" else "Open media feed")
+        if (onOpenMediaFeed != null) {
+            Surface(
+                onClick = onOpenMediaFeed,
+                color = Color.Black.copy(alpha = .66f),
+                contentColor = Color.White,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        top = if (mediaItems.size > 1) 44.dp else 10.dp,
+                        end = 10.dp,
+                    ),
+            ) {
+                Text(
+                    if (mediaItems.size > 1) "Open gallery" else "Open media feed",
+                    Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                )
+            }
         }
     }
 }
