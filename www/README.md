@@ -1,7 +1,7 @@
-# ReadThat web PWA
+# Read That web PWA
 
-`www` is the production React client for the SDUI Reddit sample. Cloudflare
-Workers Static Assets serves the compiled app from the same origin as the API.
+`www` is the production React client for Read That. Cloudflare Workers Static
+Assets serves the compiled app from the same origin as the API.
 
 ## Develop and verify
 

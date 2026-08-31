@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "ReadThat — Community conversations",
-  "short_name": "ReadThat",
-  "description": "A fast, offline-first server-driven community feed.",
+  "name": "Read That — Community conversations",
+  "short_name": "Read That",
+  "description": "Good conversations, immersive media, and communities worth following.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
@@ -19,6 +19,7 @@
   ],
   "shortcuts": [
     { "name": "Home feed", "short_name": "Home", "url": "/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Discover communities", "short_name": "Discover", "url": "/search", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Discover communities", "short_name": "Discover", "url": "/communities", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Browse media", "short_name": "Media", "url": "/media", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

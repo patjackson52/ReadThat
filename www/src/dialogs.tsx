@@ -54,7 +54,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => vo
     }
   }
 
-  return <Modal title={mode === "login" ? "Sign in to ReadThat" : "Create your account"} open={open} onClose={onClose}>
+  return <Modal title={mode === "login" ? "Sign in to Read That" : "Create your account"} open={open} onClose={onClose}>
     <div className="segmented" role="tablist" aria-label="Authentication mode">
       <button type="button" role="tab" aria-selected={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>Sign in</button>
       <button type="button" role="tab" aria-selected={mode === "register"} onClick={() => { setMode("register"); setError(null); }}>Create account</button>

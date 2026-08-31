@@ -1,0 +1,494 @@
+{
+  "collection": {
+    "fixtureVersion": 1,
+    "feedBalanceRevision": 2,
+    "fictionalProfiles": true,
+    "profileNotice": "Unofficial fan-fiction demo data. Rick and Morty character names and portraits belong to their respective rights holders; portrait metadata is sourced from The Rick and Morty API.",
+    "characterApi": "https://rickandmortyapi.com/api",
+    "database": "sdui-reddit",
+    "r2Bucket": "sdui-reddit-media",
+    "deployedApi": "https://sdui-reddit-api.patjackson52.workers.dev",
+    "rankedListSource": "https://www.listobsession.com/best-rick-and-morty-episodes/",
+    "rankedListMethodology": "https://www.listobsession.com/best-rick-and-morty-episodes-methodology/",
+    "avatarDocumentation": "https://rickandmortyapi.com/documentation/#character-schema",
+    "createdAt": "2026-08-28T18:00:00.000Z"
+  },
+  "episodes": [
+    {
+      "rank": 1,
+      "id": 15,
+      "name": "Total Rickall",
+      "code": "S02E04",
+      "airDate": "August 16, 2015",
+      "apiUrl": "https://rickandmortyapi.com/api/episode/15",
+      "community": "memory_parasites"
+    },
+    {
+      "rank": 2,
+      "id": 24,
+      "name": "Pickle Rick",
+      "code": "S03E03",
+      "airDate": "August 6, 2017",
+      "apiUrl": "https://rickandmortyapi.com/api/episode/24",
+      "community": "pickle_rick"
+    },
+    {
+      "rank": 3,
+      "id": 28,
+      "name": "The Ricklantis Mixup",
+      "code": "S03E07",
+      "airDate": "September 10, 2017",
+      "apiUrl": "https://rickandmortyapi.com/api/episode/28",
+      "community": "tales_from_citadel"
+    },
+    {
+      "rank": 4,
+      "id": 6,
+      "name": "Rick Potion #9",
+      "code": "S01E06",
+      "airDate": "January 27, 2014",
+      "apiUrl": "https://rickandmortyapi.com/api/episode/6",
+      "community": "cronenberg_support"
+    },
+    {
+      "rank": 5,
+      "id": 5,
+      "name": "Meeseeks and Destroy",
+      "code": "S01E05",
+      "airDate": "January 20, 2014",
+      "apiUrl": "https://rickandmortyapi.com/api/episode/5",
+      "community": "meeseeks_helpdesk"
+    }
+  ],
+  "characters": [
+    {
+      "username": "rick_sanchez",
+      "displayName": "Rick Sanchez",
+      "bio": "C-137 scientist, portal traveler, garage inventor, and reluctant family problem-solver. Usually has a shortcut; rarely has a safety briefing.",
+      "profileRole": "principal",
+      "api": { "id": 1, "name": "Rick Sanchez", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/1.jpeg" }
+    },
+    {
+      "username": "morty_smith",
+      "displayName": "Morty Smith",
+      "bio": "Adventure partner, increasingly skeptical grandson, and frequent author of risk reviews that should have happened before the portal opened.",
+      "profileRole": "principal",
+      "api": { "id": 2, "name": "Morty Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "unknown", "image": "https://rickandmortyapi.com/api/character/avatar/2.jpeg" }
+    },
+    {
+      "username": "summer_smith",
+      "displayName": "Summer Smith",
+      "bio": "Older sister, sharp observer, and the person most likely to keep a collapsing family operation moving while everyone else argues.",
+      "profileRole": "principal",
+      "api": { "id": 3, "name": "Summer Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Female", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/3.jpeg" }
+    },
+    {
+      "username": "beth_smith",
+      "displayName": "Beth Smith",
+      "bio": "Horse surgeon, mother, Rick's daughter, and expert at asking the one family question nobody in the room wants to answer.",
+      "profileRole": "principal",
+      "api": { "id": 4, "name": "Beth Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Female", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/4.jpeg" }
+    },
+    {
+      "username": "jerry_smith",
+      "displayName": "Jerry Smith",
+      "bio": "Dad, occasional advertising professional, bee enthusiast, and persistent believer that a clear label can solve almost anything.",
+      "profileRole": "principal",
+      "api": { "id": 5, "name": "Jerry Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/5.jpeg" }
+    },
+    {
+      "username": "space_beth",
+      "displayName": "Space Beth",
+      "bio": "Galactic resistance fighter and Beth variant. The Rick and Morty API catalogs this armored clone as Defiance Beth.",
+      "profileRole": "principal",
+      "api": { "id": 667, "name": "Defiance Beth", "status": "Alive", "species": "Human", "type": "Clone", "gender": "Female", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/667.jpeg" }
+    },
+    {
+      "username": "birdperson",
+      "displayName": "Birdperson",
+      "bio": "Warrior of Bird World, longtime friend of Rick, and a patient observer of human social rituals.",
+      "profileRole": "recurring",
+      "api": { "id": 47, "name": "Birdperson", "status": "Alive", "species": "Alien", "type": "Bird-Person", "gender": "Male", "origin": "Bird World", "image": "https://rickandmortyapi.com/api/character/avatar/47.jpeg" }
+    },
+    {
+      "username": "dr_wong",
+      "displayName": "Dr. Wong",
+      "bio": "Family therapist interested in behavior, accountability, and the extraordinary work people do to avoid ordinary emotional maintenance.",
+      "profileRole": "recurring",
+      "api": { "id": 107, "name": "Dr. Wong", "status": "Alive", "species": "Human", "type": "", "gender": "Female", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/107.jpeg" }
+    },
+    {
+      "username": "evil_morty",
+      "displayName": "Evil Morty",
+      "bio": "Citadel politician, systems thinker, and determined critic of any multiverse whose boundaries were drawn by Ricks.",
+      "profileRole": "recurring",
+      "api": { "id": 118, "name": "Evil Morty", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "unknown", "image": "https://rickandmortyapi.com/api/character/avatar/118.jpeg" }
+    },
+    {
+      "username": "jaguar",
+      "displayName": "Jaguar",
+      "bio": "Highly capable operative, devoted father, and survivor of one unusually resourceful pickle-shaped ally.",
+      "profileRole": "episode",
+      "api": { "id": 171, "name": "Jaguar", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/171.jpeg" }
+    },
+    {
+      "username": "jerry_c137",
+      "displayName": "Jerry Smith (C-137)",
+      "bio": "Cronenberg-dimension survivor. Resourceful, protective, and no longer interested in taking portal travelers at their word.",
+      "profileRole": "episode",
+      "api": { "id": 175, "name": "Jerry Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/175.jpeg" }
+    },
+    {
+      "username": "jessica_cronenberg",
+      "displayName": "Jessica (C-137)",
+      "bio": "A C-137 Jessica altered by the love-potion disaster. Profile maintained as an incident record for the survivors' network.",
+      "profileRole": "episode",
+      "api": { "id": 179, "name": "Jessica", "status": "Alive", "species": "Cronenberg", "type": "", "gender": "Female", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/179.jpeg" }
+    },
+    {
+      "username": "jessica",
+      "displayName": "Jessica",
+      "bio": "Student, occasional adventure witness, and—according to the API's latest record—a human Time God from the replacement dimension.",
+      "profileRole": "recurring",
+      "api": { "id": 180, "name": "Jessica", "status": "Alive", "species": "Human", "type": "Time God", "gender": "Female", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/180.jpeg" }
+    },
+    {
+      "username": "mr_meeseeks",
+      "displayName": "Mr. Meeseeks",
+      "bio": "Task-oriented helper from a Meeseeks Box. Strong preference for measurable goals, realistic scope, and short engagements.",
+      "profileRole": "recurring",
+      "api": { "id": 242, "name": "Mr. Meeseeks", "status": "unknown", "species": "Humanoid", "type": "Meeseeks", "gender": "Male", "origin": "Mr. Meeseeks Box", "image": "https://rickandmortyapi.com/api/character/avatar/242.jpeg" }
+    },
+    {
+      "username": "mr_poopybutthole",
+      "displayName": "Mr. Poopybutthole",
+      "bio": "Longtime family friend, relentlessly upbeat correspondent, and survivor of the Smith household's memory-parasite screening process.",
+      "profileRole": "recurring",
+      "api": { "id": 244, "name": "Mr. Poopybutthole", "status": "Alive", "species": "Poopybutthole", "type": "", "gender": "Male", "origin": "unknown", "image": "https://rickandmortyapi.com/api/character/avatar/244.jpeg" }
+    },
+    {
+      "username": "pickle_rick",
+      "displayName": "Pickle Rick",
+      "bio": "A one-episode Rick configuration: pickle body, improvised exoskeleton, complete confidence, and a conspicuous scheduling conflict with therapy.",
+      "profileRole": "episode",
+      "api": { "id": 265, "name": "Pickle Rick", "status": "Alive", "species": "unknown", "type": "Pickle", "gender": "Male", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/265.jpeg" }
+    },
+    {
+      "username": "sleepy_gary",
+      "displayName": "Sleepy Gary",
+      "bio": "Archived memory-parasite persona associated with Total Rickall. Status is dead; profile retained for deterministic episode fixtures.",
+      "profileRole": "episode",
+      "api": { "id": 324, "name": "Sleepy Gary", "status": "Dead", "species": "Alien", "type": "Parasite", "gender": "Male", "origin": "unknown", "image": "https://rickandmortyapi.com/api/character/avatar/324.jpeg" }
+    },
+    {
+      "username": "squanchy",
+      "displayName": "Squanchy",
+      "bio": "Cat-person from Planet Squanch, party host, musician, and loyal friend to Rick and Birdperson.",
+      "profileRole": "recurring",
+      "api": { "id": 331, "name": "Squanchy", "status": "unknown", "species": "Alien", "type": "Cat-Person", "gender": "Male", "origin": "Planet Squanch", "image": "https://rickandmortyapi.com/api/character/avatar/331.jpeg" }
+    },
+    {
+      "username": "summer_c137",
+      "displayName": "Summer Smith (C-137)",
+      "bio": "Original C-137 Summer and survivor of the love-potion outbreak. Direct, practical, and protective of the remaining family.",
+      "profileRole": "episode",
+      "api": { "id": 338, "name": "Summer Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Female", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/338.jpeg" }
+    },
+    {
+      "username": "president_curtis",
+      "displayName": "President Curtis",
+      "bio": "President of the United States, defender of federal jurisdiction, and recurring rival for Rick's attention and credit.",
+      "profileRole": "recurring",
+      "api": { "id": 347, "name": "President Curtis", "status": "Alive", "species": "Human", "type": "", "gender": "Male", "origin": "Earth (Replacement Dimension)", "image": "https://rickandmortyapi.com/api/character/avatar/347.jpeg" }
+    },
+    {
+      "username": "unity_hivemind",
+      "displayName": "Unity",
+      "bio": "Collective alien intelligence with planetary-scale coordination experience and a complicated history with Rick.",
+      "profileRole": "recurring",
+      "api": { "id": 372, "name": "Unity", "status": "Alive", "species": "Alien", "type": "Hivemind", "gender": "Genderless", "origin": "unknown", "image": "https://rickandmortyapi.com/api/character/avatar/372.jpeg" }
+    },
+    {
+      "username": "beth_c137",
+      "displayName": "Beth Smith (C-137)",
+      "bio": "Original C-137 Beth and survivor of Rick Potion #9. Keeps the family alive and the survivor camp functioning.",
+      "profileRole": "episode",
+      "api": { "id": 38, "name": "Beth Smith", "status": "Alive", "species": "Human", "type": "", "gender": "Female", "origin": "Earth (C-137)", "image": "https://rickandmortyapi.com/api/character/avatar/38.jpeg" }
+    }
+  ],
+  "media": [
+    { "characterId": 1, "byteSize": 39323, "sha256": "8332527a300dad67131df8fc84679fd0385d6f43ab45bdb84e631607a54ca6f8", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 2, "byteSize": 15570, "sha256": "db126c362da3e1ffa40bf3630e0e830540318683c19d638f80e56d215a0ff60c", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 3, "byteSize": 26308, "sha256": "044ef6e632942abc99b06086c89b6202da0e35a24dc6fd60d2294be57ee270ba", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 4, "byteSize": 24467, "sha256": "ea87eba7fa0fa6cd2155e2c2c7552108b2c026f305d1267b0002eab4463f6dcf", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 5, "byteSize": 31576, "sha256": "670df41efb02611d965836d4bbd2f679a36dec667ca2b6f72996e158237385cf", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 667, "byteSize": 26067, "sha256": "852f473fdf72e8e2312e64f51981e944d7b3f2f763d65b0b0254056ce1f264b4", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 47, "byteSize": 26749, "sha256": "4484860cf772ca5f7b5f3792a9d8f2cabd3d8066299985fa8aec296133348617", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 107, "byteSize": 26790, "sha256": "8bc073f2a6c35ab45493321d220a33303eb0fea5127dbdaf2bdf797d2985f5e3", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 118, "byteSize": 33344, "sha256": "ea9f8b1194afa15f2bae1eb02c1216e9719985a243379429273488d9fb5fae2f", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 171, "byteSize": 25143, "sha256": "97a357d82686d1ce98f24f00809db6c2ba26580091e6915af878e157c10ef190", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 175, "byteSize": 35515, "sha256": "b8446bae1cade91ffea10182ab3a40fd428bd86a8146dddf5768e380c71d040e", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 179, "byteSize": 32464, "sha256": "a193edd1edc5551d62b5e45dbe91da6606e7e9ae4700407f1ba8f82f842f61f2", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 180, "byteSize": 32460, "sha256": "85d174e9e60809360e1cd1375211bcda1b42ed55b87cd8fb31f6b5c8a0a3acf8", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 242, "byteSize": 23927, "sha256": "95e3a909e1ba961754aec8ac6c6f49ff426bb79f2af5d24991014d397aa165dd", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 244, "byteSize": 31340, "sha256": "b01e53ad3f5c73e1c09cb0761e3f599a8b530c62c3f0d4f6df574b096b1d671b", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 265, "byteSize": 39825, "sha256": "7e85f08b11f0799b249b5442e8ed4cea7a9911f7fc331fb7c5e10dcc0c31a8ef", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 324, "byteSize": 32235, "sha256": "aba2e99b8f05e737858a4a5361829b9758eeea41cfff5d7670e4a94bb8f9f9e3", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 331, "byteSize": 51878, "sha256": "82a643673c3bed7be78f6fe45298d6c3ebd9d22e4734ece26d82bda1dda8fc24", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 338, "byteSize": 32070, "sha256": "bab471eb7f28b91924c54a8b4d77e2cfe40f0d99e213da2d049b184bf5db81e9", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 347, "byteSize": 32661, "sha256": "9878d5d20334ec256046b3f62f571b2cff01796b83299cde2bffb18ee0257d46", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 372, "byteSize": 49253, "sha256": "acd37049779897378d88ccea12747eb759c8c7ccac6db1c4e29281b18241827f", "contentType": "image/jpeg", "width": 300, "height": 300 },
+    { "characterId": 38, "byteSize": 30505, "sha256": "9553810f4be4d477b901a8c1ae284b573133a61fbd00a73a650791667aaaf2a0", "contentType": "image/jpeg", "width": 300, "height": 300 }
+  ],
+  "communities": [
+    {
+      "name": "dimension_c137",
+      "displayName": "Dimension C-137 Lounge",
+      "description": "Family updates, portal etiquette, interdimensional incident reports, and arguments that were too loud for the garage.",
+      "owner": "rick_sanchez",
+      "avatarCharacterId": 1,
+      "members": ["morty_smith", "summer_smith", "beth_smith", "jerry_smith", "space_beth", "birdperson", "dr_wong", "evil_morty", "jaguar", "jessica", "mr_meeseeks", "mr_poopybutthole", "pickle_rick", "squanchy", "president_curtis", "unity_hivemind"]
+    },
+    {
+      "name": "memory_parasites",
+      "displayName": "Memory Parasite Watch",
+      "description": "Bad-memory verification, quarantine notes, recovery updates, and respectful discussion of the Total Rickall incident.",
+      "owner": "mr_poopybutthole",
+      "avatarCharacterId": 244,
+      "members": ["rick_sanchez", "morty_smith", "summer_smith", "beth_smith", "jerry_smith", "sleepy_gary"]
+    },
+    {
+      "name": "pickle_rick",
+      "displayName": "Pickle Rick Field Notes",
+      "description": "Improvised engineering, sewer survival, family therapy follow-ups, and one highly specific transformation.",
+      "owner": "pickle_rick",
+      "avatarCharacterId": 265,
+      "members": ["rick_sanchez", "morty_smith", "summer_smith", "beth_smith", "jerry_smith", "dr_wong", "jaguar"]
+    },
+    {
+      "name": "tales_from_citadel",
+      "displayName": "Tales from the Citadel",
+      "description": "Citadel politics, labor, school, policing, advertising, and the suspiciously polished stories behind all of it.",
+      "owner": "evil_morty",
+      "avatarCharacterId": 118,
+      "members": ["rick_sanchez", "morty_smith", "summer_smith", "beth_smith", "jerry_smith", "space_beth", "birdperson", "jessica", "president_curtis"]
+    },
+    {
+      "name": "cronenberg_support",
+      "displayName": "Cronenberg Survivor Network",
+      "description": "C-137 survivor check-ins, supply routes, monster avoidance, and post-incident accountability for Rick Potion #9.",
+      "owner": "jerry_c137",
+      "avatarCharacterId": 175,
+      "members": ["rick_sanchez", "morty_smith", "summer_c137", "beth_c137", "jessica_cronenberg"]
+    },
+    {
+      "name": "meeseeks_helpdesk",
+      "displayName": "Meeseeks Help Desk",
+      "description": "Small, concrete requests with observable completion criteria. Golf coaching requests require a current baseline assessment.",
+      "owner": "mr_meeseeks",
+      "avatarCharacterId": 242,
+      "members": ["rick_sanchez", "morty_smith", "beth_c137", "jerry_c137", "summer_c137"]
+    }
+  ],
+  "posts": [
+    {
+      "fixtureId": "general-space-beth-checkin",
+      "subreddit": "dimension_c137",
+      "author": "space_beth",
+      "publishedAt": "2026-08-28T21:58:00.000Z",
+      "seedUpvotes": 2,
+      "kind": "image",
+      "mediaCharacterId": 667,
+      "title": "Back from the edge of the galaxy. What did I miss?",
+      "body": "I was gone for six weeks. The garage has a new crater, Jerry labeled three cabinets 'definitely safe,' and there are two Beths arguing over who gets the good travel mug. Give me the short version.",
+      "comments": [
+        { "ref": "beth-summary", "author": "beth_smith", "body": "The mug is mine. The crater is Dad's. The labels are Jerry's attempt to make uncertainty feel laminated." },
+        { "ref": "jerry-labels", "author": "jerry_smith", "body": "Laminated systems survive spills. Nobody thanks the process person until the portal fluid reaches the cereal shelf." },
+        { "ref": "summer-audit", "parentRef": "jerry-labels", "author": "summer_smith", "body": "You alphabetized portal fluid by smell." },
+        { "ref": "rick-audit", "parentRef": "summer-audit", "author": "rick_sanchez", "body": "Which was somehow the only useful part of his system." },
+        { "ref": "morty-short", "author": "morty_smith", "body": "The short version is that there is no short version, and every time someone says the house is quiet I check the ceiling." },
+        { "ref": "birdperson-home", "author": "birdperson", "body": "A home is a place where disorder becomes tradition. Your travel mug appears to be a symbol of rank." },
+        { "ref": "squanchy-party", "author": "squanchy", "body": "I heard 'new crater' and assumed this was a party thread. I can bring equipment." },
+        { "ref": "unity-capacity", "author": "unity_hivemind", "body": "If coordination is the problem, I can offer several billion hands. I understand that this suggestion may be emotionally complicated." },
+        { "ref": "president-jurisdiction", "author": "president_curtis", "body": "If the crater crosses a property line, federal jurisdiction begins exactly where Rick says it does not." },
+        { "ref": "jessica-pass", "author": "jessica", "body": "I have experienced an eternity outside linear time and I am still not volunteering to inventory that garage." }
+      ]
+    },
+    {
+      "fixtureId": "total-rickall-recovery",
+      "subreddit": "memory_parasites",
+      "author": "mr_poopybutthole",
+      "publishedAt": "2026-08-28T20:35:00.000Z",
+      "seedUpvotes": 2,
+      "kind": "image",
+      "mediaCharacterId": 244,
+      "title": "Recovery update: real friend, real bandage, complicated afternoon",
+      "body": "The good news is the physical therapy team says my shoulder is improving. The awkward news is that every cheerful memory now comes with a follow-up question and a metal detector.",
+      "comments": [
+        { "ref": "beth-apology", "author": "beth_smith", "body": "I am still sorry. I turned a theory into a certainty because I was scared, and you paid for it." },
+        { "ref": "poopy-accepts", "parentRef": "beth-apology", "author": "mr_poopybutthole", "body": "Apology accepted. Maybe next reunion starts with snacks and identification cards instead of firearms." },
+        { "ref": "rick-method", "author": "rick_sanchez", "body": "The method worked. The implementation had one preventable exception and an aggressively sentimental edge case." },
+        { "ref": "morty-bed", "author": "morty_smith", "body": "We also threw out half the family photos and the downstairs guest bed, so maybe 'worked' needs a confidence interval." },
+        { "ref": "summer-rule", "author": "summer_smith", "body": "New house rule: nobody appears in a flashback montage until they answer three questions only a real person would hate." },
+        { "ref": "jerry-memory", "author": "jerry_smith", "body": "I can confirm I have plenty of bad memories with everyone here. It is finally nice to be useful." },
+        { "ref": "gary-archive", "author": "sleepy_gary", "body": "This archived account has no comment regarding authenticity, pleasant memories, or the location of Jerry's missing boat brochure." }
+      ]
+    },
+    {
+      "fixtureId": "total-rickall-protocol",
+      "subreddit": "memory_parasites",
+      "author": "rick_sanchez",
+      "publishedAt": "2026-08-30T04:35:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "text",
+      "title": "Draft protocol for the next memory-parasite incident",
+      "body": "1. Seal exits before anyone narrates a suspiciously warm memory.\n2. Record one negative memory per verified resident.\n3. Do not let Jerry run intake.\n4. Treat certainty as a symptom until the room stops adding people.",
+      "comments": [
+        { "ref": "beth-consent", "author": "beth_smith", "body": "Add a fifth step: do not hand a weapon to the most frightened person in the room and call that peer review." },
+        { "ref": "rick-peer", "parentRef": "beth-consent", "author": "rick_sanchez", "body": "Fine. Fifth step: frightened people get clipboards." },
+        { "ref": "morty-check", "author": "morty_smith", "body": "Can the negative memory be something minor? I do not want a quarantine drill turning into family court." },
+        { "ref": "summer-app", "author": "summer_smith", "body": "I made a form. It has a checkbox for 'person arrived during a flashback' and another for 'name sounds generated.'" }
+      ]
+    },
+    {
+      "fixtureId": "pickle-field-log",
+      "subreddit": "pickle_rick",
+      "author": "pickle_rick",
+      "publishedAt": "2026-08-30T04:15:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "image",
+      "mediaCharacterId": 265,
+      "title": "Field engineering log: sewer mobility platform",
+      "body": "Constraint: no limbs. Available materials: office supplies, discarded machinery, and a sewer ecosystem with poor boundaries. Result: functional mobility, mixed aesthetics, no change to the therapy calendar.",
+      "comments": [
+        { "ref": "jaguar-respect", "author": "jaguar", "body": "I have worked with teams that had more equipment and less adaptability. I would still prefer our next alliance begin above ground." },
+        { "ref": "wong-calendar", "author": "dr_wong", "body": "The final line is the most informative part of the report. Engineering solved the physical constraint while preserving the avoidance." },
+        { "ref": "rick-notes", "parentRef": "wong-calendar", "author": "rick_sanchez", "body": "Or the physical constraint was interesting and the appointment was not. Sometimes a machine is just a machine." },
+        { "ref": "beth-choice", "author": "beth_smith", "body": "You chose the constraint, Dad. That makes the engineering impressive and the excuse worse." },
+        { "ref": "morty-cleanup", "author": "morty_smith", "body": "Nobody includes cleanup in these victory reports. I found a battery taped to something I am trying not to identify." },
+        { "ref": "summer-merch", "author": "summer_smith", "body": "The design is horrifying, but the silhouette is marketable. I hate that this is probably the lesson people kept." }
+      ]
+    },
+    {
+      "fixtureId": "pickle-therapy-followup",
+      "subreddit": "pickle_rick",
+      "author": "dr_wong",
+      "publishedAt": "2026-08-28T22:03:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "text",
+      "title": "A follow-up on spectacular avoidance",
+      "body": "Competence can make avoidance look heroic. The scale of the detour does not change the ordinary decision underneath it: attend, refuse, or negotiate honestly. Building a more cinematic detour is still choosing the detour.",
+      "comments": [
+        { "ref": "rick-spectacle", "author": "rick_sanchez", "body": "If the detour invents three patentable mechanisms, calling it avoidance leaves out the productive part." },
+        { "ref": "wong-reply", "parentRef": "rick-spectacle", "author": "dr_wong", "body": "Productivity and avoidance are not mutually exclusive. That is precisely why your version is so effective." },
+        { "ref": "beth-heard", "author": "beth_smith", "body": "I heard him admit that family obligations can affect him. It was buried under ten layers of contempt, but it was there." },
+        { "ref": "jerry-meeting", "author": "jerry_smith", "body": "For the record, I attended the appointment in my original body and received no engineering awards." }
+      ]
+    },
+    {
+      "fixtureId": "citadel-campaign-update",
+      "subreddit": "tales_from_citadel",
+      "author": "evil_morty",
+      "publishedAt": "2026-08-28T21:25:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "image",
+      "mediaCharacterId": 118,
+      "title": "A campaign update from the Citadel",
+      "body": "The Citadel keeps asking Mortys to accept a system designed by Ricks as though infinite versions make the choices fair. They do not. A larger cage is still a cage, even when every wall has a portal painted on it.",
+      "comments": [
+        { "ref": "rick-branding", "author": "rick_sanchez", "body": "Strong branding, vague deliverables, ominous portrait. You learned politics faster than most Ricks learn basic hygiene." },
+        { "ref": "evil-deliverable", "parentRef": "rick-branding", "author": "evil_morty", "body": "The deliverable is an exit. You dislike it because you assumed nobody would build one without your permission." },
+        { "ref": "morty-cost", "author": "morty_smith", "body": "I understand wanting out. I do not understand treating every other Morty like a component in the door." },
+        { "ref": "spacebeth-system", "author": "space_beth", "body": "Systems built around one genius always call resistance irrational. Then they act surprised when the resistance learns engineering." },
+        { "ref": "birdperson-power", "author": "birdperson", "body": "A leader who defines freedom for others has begun to rebuild the thing he escaped." },
+        { "ref": "president-polls", "author": "president_curtis", "body": "I have seen this polling strategy before: promise structural change, reveal the terrifying machinery after the votes are counted." }
+      ]
+    },
+    {
+      "fixtureId": "citadel-simple-rick-ads",
+      "subreddit": "tales_from_citadel",
+      "author": "morty_smith",
+      "publishedAt": "2026-08-28T20:39:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "text",
+      "title": "Does anyone else feel weird about the Simple Rick ads?",
+      "body": "The commercial turns one person's happiest memory into a product and then tells workers the product is freedom. I know Citadel advertising is supposed to be surreal, but this feels less like a joke and more like a warning label.",
+      "comments": [
+        { "ref": "evil-product", "author": "evil_morty", "body": "It is the Citadel in miniature: extract something human, package it as comfort, and sell it back to the people whose labor keeps the extraction running." },
+        { "ref": "rick-adblock", "author": "rick_sanchez", "body": "Or install an ad blocker and stop building a political identity around candy wrappers." },
+        { "ref": "summer-wrapper", "author": "summer_smith", "body": "That answer would land better if your face were not the brand logo on every wrapper." },
+        { "ref": "jerry-focus", "author": "jerry_smith", "body": "As someone with advertising experience, the campaign has excellent message discipline and a deeply alarming research pipeline." },
+        { "ref": "jessica-memory", "author": "jessica", "body": "Selling a memory as a mood is disturbing. I have enough trouble deciding which version of my own past feels real." }
+      ]
+    },
+    {
+      "fixtureId": "cronenberg-survivor-checkin",
+      "subreddit": "cronenberg_support",
+      "author": "jerry_c137",
+      "publishedAt": "2026-08-28T22:02:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "image",
+      "mediaCharacterId": 175,
+      "title": "C-137 survivor check-in: north route is clear",
+      "body": "Water station is working. North route is passable before dusk. Do not follow portal residue; it attracts attention and has never once led to an apology.",
+      "comments": [
+        { "ref": "beth-supplies", "author": "beth_c137", "body": "I moved medical supplies to the second floor and marked the quiet stairwell. We need batteries, clean gauze, and no surprise visitors." },
+        { "ref": "summer-watch", "author": "summer_c137", "body": "East watch saw movement near the old freeway. Not a herd, maybe three. I will check again from the roof at sunset." },
+        { "ref": "morty-sorry", "author": "morty_smith", "body": "I know a post is not enough, but I am sorry. We left you with the consequences and told ourselves there was no way to help." },
+        { "ref": "jerry-boundary", "parentRef": "morty-sorry", "author": "jerry_c137", "body": "You can be sorry from your side of the portal. If you want to help, send filters and do not bring Rick." },
+        { "ref": "rick-filters", "author": "rick_sanchez", "body": "Filters are staged. The no-Rick clause is technically inefficient, emotionally predictable, and accepted." },
+        { "ref": "jessica-signal", "author": "jessica_cronenberg", "body": "Signal received. Staying west of the freeway. The old school has shelter, but the lower doors are blocked." }
+      ]
+    },
+    {
+      "fixtureId": "cronenberg-risk-review",
+      "subreddit": "cronenberg_support",
+      "author": "morty_smith",
+      "publishedAt": "2026-08-28T21:20:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "text",
+      "title": "The love-potion risk review we should have done first",
+      "body": "Questions we skipped: What happens after the dance? Can the effect spread? What does flu season change? Is there a rollback that does not mutate the whole planet? Most importantly: does the person affected get any choice at all?",
+      "comments": [
+        { "ref": "rick-emergency", "author": "rick_sanchez", "body": "Correct list, several years late. Add containment boundaries and never let a genetic shortcut share an error path with airborne symptoms." },
+        { "ref": "beth-consent", "author": "beth_smith", "body": "The last question should have been first. A solution designed to remove somebody's choice was already a failure before the biology went wrong." },
+        { "ref": "jessica-agency", "author": "jessica", "body": "Thank you. I was treated like the desired output of an experiment instead of a person who could answer a question." },
+        { "ref": "jerry-scope", "author": "jerry_smith", "body": "This is why even small romantic gestures need a project brief. Nobody likes hearing that until the planet changes shape." }
+      ]
+    },
+    {
+      "fixtureId": "meeseeks-task-postmortem",
+      "subreddit": "meeseeks_helpdesk",
+      "author": "mr_meeseeks",
+      "publishedAt": "2026-08-28T20:37:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "image",
+      "mediaCharacterId": 242,
+      "title": "Task queue postmortem: the golf request",
+      "body": "Original request: remove two strokes from a golf game. Missing inputs: current swing, practice commitment, deadline, and willingness to receive feedback. Result: uncontrolled helper fan-out and severe scope distress.",
+      "comments": [
+        { "ref": "jerry-context", "author": "jerry_c137", "body": "The request sounded small because everyone kept saying the box was for simple tasks. Nobody said the user had to arrive with athletic self-awareness." },
+        { "ref": "meeseeks-baseline", "parentRef": "jerry-context", "author": "mr_meeseeks", "body": "A simple outcome can still require an honest baseline! Next time we measure before promising completion!" },
+        { "ref": "beth-boundary", "author": "beth_c137", "body": "A helper should be able to refuse an impossible request before the request becomes a crisis." },
+        { "ref": "rick-box", "author": "rick_sanchez", "body": "The box performed to specification. Jerry turned a bounded helper primitive into an unbounded retry storm." },
+        { "ref": "morty-retry", "parentRef": "rick-box", "author": "morty_smith", "body": "Then maybe the box needs a retry limit instead of assuming every user understands distributed systems." },
+        { "ref": "summer-ui", "author": "summer_c137", "body": "Put 'one task, one Meeseeks, no recursive spawning' on the button. People read buttons when the alternative is blue chaos." }
+      ]
+    },
+    {
+      "fixtureId": "meeseeks-golf-progress",
+      "subreddit": "meeseeks_helpdesk",
+      "author": "jerry_c137",
+      "publishedAt": "2026-08-28T19:00:00.000Z",
+      "seedUpvotes": 1,
+      "kind": "text",
+      "title": "Golf progress update, with measurable acceptance criteria",
+      "body": "Baseline recorded. Practice window booked. Success means two strokes lower across three rounds, not one lucky shot. I am posting this because apparently ambiguity is how task helpers become mobs.",
+      "comments": [
+        { "ref": "meeseeks-approved", "author": "mr_meeseeks", "body": "Clear baseline! Observable target! Multiple trials! This is a request a helper can complete!" },
+        { "ref": "beth-growth", "author": "beth_c137", "body": "This is more planning than you put into our last three vacations combined. I am choosing to call that growth." },
+        { "ref": "summer-video", "author": "summer_c137", "body": "I will record the rounds so nobody moves the success criteria after the third hole." }
+      ]
+    }
+  ]
+}

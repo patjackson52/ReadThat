@@ -16,7 +16,7 @@ export default defineConfig({
         globPatterns: ["**/*.{js,css,html,svg,png,webmanifest,woff2}"],
         // HLS support is intentionally lazy. Precaching its large parser would make
         // every installation pay the video cost before the first video is viewed.
-        globIgnores: ["**/hls-*.js"],
+        globIgnores: ["**/hls-*.js", "**/og.png"],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       devOptions: { enabled: false },

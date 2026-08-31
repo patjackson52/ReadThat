@@ -14,7 +14,7 @@ export function ProfilePage() {
     void api.user(username).then((value) => { if (live) setUser(value); }).catch((caught) => { if (live) setError(caught instanceof Error ? caught.message : "Profile unavailable"); });
     return () => { live = false; };
   }, [username]);
-  useEffect(() => { if (user) document.title = `${user.displayName} · ReadThat`; }, [user]);
+  useEffect(() => { if (user) document.title = `${user.displayName} · Read That`; }, [user]);
   if (error) return <EmptyState icon="user" title="Profile unavailable">{error}</EmptyState>;
   if (!user) return <div className="detail-loading"><Spinner /> Loading profile…</div>;
   return <div className="profile-page">

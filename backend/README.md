@@ -21,7 +21,8 @@ It implements:
   tree reads with `load_more` cursors, fixed 8/200 phases, and depth 10;
 - explicit upvote/downvote/remove-vote state with idempotent mutation ledgers,
   transactional aggregates, and karma;
-- a personalized, cursor-paged SDUI feed; post detail remains a domain model;
+- a personalized, cursor-paged SDUI feed whose first page always starts with
+  the pinned public ReadThat overview post; post detail remains a domain model;
 - an ACL-filtered account drawer with ETag/keyset-paged memberships and
   idempotent offline visit/remove/clear synchronization;
 - ACL-aware FTS5 search across posts, media, comments, communities, and
@@ -89,6 +90,33 @@ playlist and poster, and finally checks the SDUI feed contract. Its JSON output
 contains the media/post IDs and CDN HLS, DASH, poster, and preview URLs.
 The current production IDs and delivery URLs are recorded in
 [`fixtures/pexels-motion-deployment.json`](fixtures/pexels-motion-deployment.json).
+
+### Licensed parkour-video fixtures
+
+[`fixtures/pexels-parkour.json`](fixtures/pexels-parkour.json) records five
+ground-level parkour clips from the requested Pexels search, including each
+source page, creator, license snapshot, exact source dimensions and duration,
+byte size, SHA-256 digest, and an explicit publication timestamp. Download the
+catalog's `sourceFileUrl` values to their named files in one directory, then
+preview or publish the set:
+
+```bash
+npm run seed:pexels-parkour -- --plan
+
+D1_DATABASE=sdui-reddit \
+API_BASE_URL=https://your-worker.example \
+  npm run seed:pexels-parkour -- /path/to/pexels-parkour-videos
+```
+
+The seeder uses the normal authenticated multipart upload and post APIs, waits
+for Cloudflare Stream, checks adaptive HLS and posters, and then verifies each
+community and anonymous-home SDUI cell. It also reapplies each explicit
+`publishedAt` after post creation. With the current
+`score * 1_000_000_000 + created_at` hot rank, the production posts land at
+positions 15, 19, 28, 39, and 47 in the first 50 anonymous organic groups
+instead of forming a video block. Exact deployed IDs, URLs, positions, and
+verification results are recorded in
+[`fixtures/pexels-parkour-deployment.json`](fixtures/pexels-parkour-deployment.json).
 
 ### Licensed demo personas and image posts
 
@@ -186,18 +214,130 @@ npm run seed:deeply-nested
 The seeder validates body lengths and parent/depth invariants before its first
 write, chunks SQL below the D1 statement-size limit, verifies stored root/count/
 depth metrics, measures the 8-comment and 200-comment API shapes in raw and gzip
-bytes, and rejects cursors containing more than 100 IDs. Current production IDs,
+bytes, and rejects cursors containing more than 100 IDs. Idempotent verification
+counts deterministic fixture comments separately from organic replies, so real
+discussion activity is preserved and reported instead of treated as corruption.
+Current production IDs,
 page URLs, workload shapes, and measured payloads are recorded in
 [`fixtures/deeply-nested-deployment.json`](fixtures/deeply-nested-deployment.json).
 
-## Deploy
+### Rick and Morty character and episode fixtures
 
-The checked-in `wrangler.jsonc` uses safe placeholder account and resource IDs.
-Create resources in your account, then update the D1 id and Images account hash:
+[`fixtures/rick-and-morty-demo.json`](fixtures/rick-and-morty-demo.json)
+defines 22 clearly fictional fan-demo profiles: the six principal family
+identities (including Space Beth), major recurring characters, and the variants
+needed for five episode conversations. All 22 checksum-pinned portraits come
+from the public [Rick and Morty API](https://rickandmortyapi.com/api), whose
+character schema provides 300×300 avatar portraits. Six are also reused as
+image-post media.
+
+The five episode communities follow the top five in a June 2025 aggregation of
+29 ranked episode lists: *Total Rickall*, *Pickle Rick*, *The Ricklantis Mixup*,
+*Rick Potion #9*, and *Meeseeks and Destroy*. A sixth Dimension C-137 lounge
+brings the main and recurring cast together. The fixture contains 11 original
+fan-fiction posts, 61 nested comments, and six checksum-pinned image posts; it
+does not copy episode dialogue or still frames.
+
+Feed-balance revision 2 assigns explicit `publishedAt` values across August
+28–30 and keeps only one or two intentional seed upvotes per post. This matters
+because the current hot rank is `score * 1_000_000_000 + created_at`: one score
+point is worth about 11.6 days of recency. The Worker preserves that order inside
+image, video, and other-content lanes, then merges those signed keysets in a
+seven-slot showcase pattern: image, other, video, other, image, other, video.
+Sparse communities fall back to the highest-ranked available lane instead of
+mixing content from another community.
+
+The current production IDs, page URLs, counts, Worker version, and verification
+results are recorded in
+[`fixtures/rick-and-morty-demo-deployment.json`](fixtures/rick-and-morty-demo-deployment.json).
+
+The home feed also includes seven explicitly labeled portfolio-demo ads for
+Patrick Jackson as a Reddit Client Platform Engineer. Five AI-written fan-demo
+endorsements use the hosted portraits of Rick Sanchez, Evil Morty, Dr. Wong,
+Space Beth, and Unity. Two first-party portfolio units use Patrick's versioned
+headshots from the private R2 media bucket. Each ad carries three curated
+`r/readthateng` case-study cards that navigate to real in-app posts, and the
+catalog collectively covers all 11 engineering deep dives. Campaign copy,
+stable ad IDs, related post IDs, media keys, and placement live in
+[`src/promoted.ts`](src/promoted.ts).
+The campaign alternates three- and four-organic-post gaps across signed cursor
+pages, starting headshot → Rick → headshot before the remaining character ads.
+
+Validate every API record, relationship, body bound, and portrait checksum
+without writing, or idempotently seed the configured D1 database and R2 bucket:
 
 ```bash
-npx wrangler d1 create readthat
-npx wrangler r2 bucket create readthat-media
+npm run seed:rick-and-morty -- --plan
+
+D1_DATABASE=sdui-reddit \
+R2_BUCKET=sdui-reddit-media \
+API_BASE_URL=https://your-worker.example \
+  npm run seed:rick-and-morty
+
+# Reapply only deterministic dates, seed votes, and related D1 metadata.
+D1_DATABASE=sdui-reddit \
+API_BASE_URL=https://your-worker.example \
+  npm run seed:rick-and-morty -- --rebalance-feed
+```
+
+The seeder rejects username/community identity collisions before its first
+write, uses deterministic IDs, uploads media under a versioned R2 prefix, and
+then verifies all profiles, community feeds, posts, recursive comment trees,
+and image bytes through the deployed API. These are content-only personas with
+non-login password placeholders, matching the existing disposable persona
+fixture policy. Re-running the same fixture version is safe.
+
+### ReadThat engineering case-study fixtures
+
+[`fixtures/readthat-case-study.json`](fixtures/readthat-case-study.json) maps
+the overview and ten pages at
+[patrickjackson.dev/case-studies/readthat](https://patrickjackson.dev/case-studies/readthat/)
+to 11 deterministic text posts in `r/readthateng`, all authored by
+`u/patrickjackson`. Each post contains an original Problem / Tradeoff / Solution
+TLDR plus a Markdown link to its matching deep dive. Feed-balance revision 1
+places one post on August 30 and distributes the rest through August 28 against
+existing score-one content, so the current score-plus-recency ranking mixes the
+series into the demo feed instead of presenting an 11-post block.
+
+Preview the IDs without writing, or seed and verify the live community and post
+detail endpoints:
+
+```bash
+npm run seed:readthat-case-study -- --plan
+
+D1_DATABASE=sdui-reddit \
+WRANGLER_CONFIG=/path/to/live-wrangler.jsonc \
+API_BASE_URL=https://your-worker.example \
+  npm run seed:readthat-case-study
+
+# After deploying the ad catalog, also verify all seven ad carousels.
+D1_DATABASE=sdui-reddit \
+WRANGLER_CONFIG=/path/to/live-wrangler.jsonc \
+API_BASE_URL=https://your-worker.example \
+  npm run seed:readthat-case-study -- --verify-ads
+```
+
+If `u/patrickjackson` already exists, the seeder preserves that account and uses
+its ID. Otherwise it materializes the existing editorial profile as a
+content-only database identity; it never writes a usable password. Re-running
+the same fixture version updates content in place after rejecting ID/name
+collisions.
+
+The current production community, post IDs and URLs, Worker version, ad-link
+coverage, feed positions, and verification results are recorded in
+[`fixtures/readthat-case-study-deployment.json`](fixtures/readthat-case-study-deployment.json).
+
+## Deploy
+
+The checked-in `wrangler.jsonc` targets the existing production Worker,
+`sdui-reddit-api`, and its `sdui-reddit` D1 database and
+`sdui-reddit-media` R2 bucket. Resource IDs and the Images account hash are
+public identifiers; credentials remain Worker secrets. For a new account,
+create equivalent resources and replace those identifiers before deploying:
+
+```bash
+npx wrangler d1 create sdui-reddit
+npx wrangler r2 bucket create sdui-reddit-media
 openssl rand -base64 48 | npx wrangler secret put AUTH_PEPPER
 openssl rand -base64 48 | npx wrangler secret put ANALYTICS_ID_PEPPER
 openssl rand -base64 48 | npx wrangler secret put CURSOR_SECRET
@@ -314,19 +454,26 @@ column map, weighted percentile queries, SLOs, and incident runbook are in
 | Counts/karma | SQLite triggers in the write transaction | Aggregate and source vote/comment commit together |
 | Comment cache | `(post, count, depth, root)` key + post version | Five-minute reusable shape; writes/votes invalidate by version |
 | Feed paging | Signed keyset cursor + creation-time ceiling | Stable insert boundary; rank changes can reorder across pages |
+| Feed context | Validated public post ID/community/title outside ranked candidates | Overview is first on every home/community first page without duplicates or cursor drift |
 | Search paging | FTS5 rank/sort keyset + signed query/viewer-bound snapshot cursor | No offset drift or cross-query/private-viewer cursor reuse |
 | Live detail | One Durable Object per post | Total event order per post; last 256 events replayable |
 | Mobile votes | Room state + coalescing durable outbox | Instant UI, process-death survival, safe retry/reconcile |
 | Mobile community/post creation | Account-scoped Room outboxes + WorkManager dependency barrier | Immediate optimistic UI offline; community publishes before dependent post; UUIDs reconcile in place |
 | Community drawer | Per-user revision + signed keyset cursor + mutation ledger | Cheap 304 validation, viewer-bound paging, ACL-safe recents, and exactly-once visit command effects |
 
-Feed ranking intentionally treats subscribed communities as a high-priority
-lane and discovery as a second lane. Each lane reads a precomputed indexed rank
-and supplies at most `limit + 1` candidates; the final merge never sorts the
-entire corpus. Because vote-driven rank is mutable, a post can move across a
-long pagination session. Room primary keys de-duplicate it client-side. A
-large-scale product that requires a strict frozen feed should materialize feed
-IDs/versioned rank snapshots rather than pretend a D1 bookmark freezes ranking.
+Feed ranking treats subscribed communities as a high-priority source and
+discovery as a second source inside each image, video, and other-content lane.
+Every lane reads a precomputed indexed rank and supplies at most `limit + 1`
+candidates; a seven-slot editorial merge showcases media without sorting the
+entire corpus. Each signed cursor advances the three keysets independently, so
+the merge cannot skip a deferred high-ranked post. The public ReadThat overview
+is a separate first-page context candidate at position zero and is excluded
+from every ranked lane. Already-issued pre-showcase cursors continue through a
+legacy keyset path until refresh. Because vote-driven rank is mutable, a post
+can still move across a long pagination session; Room primary keys de-duplicate
+it client-side. A large-scale product that requires a strict frozen feed should
+materialize feed IDs/versioned rank snapshots rather than pretend a D1 bookmark
+freezes ranking.
 
 ## Why REST, HTTP/3, and WebSockets are split this way
 

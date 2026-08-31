@@ -13,6 +13,7 @@ const createCommentSchema = z.object({
 
 const MAX_CURSOR_CHILD_IDS = 100;
 const MAX_VOTE_IDS_PER_QUERY = 90;
+const COMMENT_TREE_CACHE_VERSION = 2;
 
 const loadMoreSchema = z.object({
   childIds: z.array(z.string().uuid()).min(1).max(MAX_CURSOR_CHILD_IDS),
@@ -59,6 +60,8 @@ interface CommentNode {
   createdAt: number;
   createdAgoMin: number;
   isEdited: boolean;
+  /** Comment nodes already materialized below this node; load-more cursors are excluded. */
+  descendantCount: number;
   children: TreeNode[];
 }
 
@@ -164,11 +167,12 @@ function rowToNode(context: RequestContext, row: RawCommentRow, children: TreeNo
     createdAt: row.created_at,
     createdAgoMin: Math.max(0, Math.floor((Date.now() - row.created_at) / 60_000)),
     isEdited: row.edited_at !== null,
+    descendantCount: materializedDescendantCount(children),
     children,
   };
 }
 
-function rawCommentJson(context: RequestContext, row: RawCommentRow) {
+function rawCommentJson(context: RequestContext, row: RawCommentRow, descendantCount = 0) {
   return {
     id: row.id,
     postId: row.post_id,
@@ -182,7 +186,38 @@ function rawCommentJson(context: RequestContext, row: RawCommentRow) {
     createdAt: row.created_at,
     createdAgoMin: Math.max(0, Math.floor((Date.now() - row.created_at) / 60_000)),
     isEdited: row.edited_at !== null,
+    descendantCount,
   };
+}
+
+/**
+ * Counts only comments present in this response. A load-more cursor is already hidden before a
+ * collapse, so including its unresolved corpus would make the collapse message misleading.
+ * Children already carry their own totals, making this O(number of direct children) and O(n)
+ * across the heap tree's existing bottom-up assembly.
+ */
+function materializedDescendantCount(children: TreeNode[]): number {
+  let count = 0;
+  for (const child of children) {
+    if (child.type === "comment") count += 1 + child.descendantCount;
+  }
+  return count;
+}
+
+/** Heap-pop order is parent-before-child, so one reverse pass produces every selected count. */
+function selectedDescendantCounts(rows: RawCommentRow[]): Map<string, number> {
+  const selectedIds = new Set(rows.map((row) => row.id));
+  const counts = new Map<string, number>();
+  for (let index = rows.length - 1; index >= 0; index -= 1) {
+    const row = rows[index];
+    if (!row) continue;
+    const count = counts.get(row.id) ?? 0;
+    counts.set(row.id, count);
+    if (row.parent_id && selectedIds.has(row.parent_id)) {
+      counts.set(row.parent_id, (counts.get(row.parent_id) ?? 0) + 1 + count);
+    }
+  }
+  return counts;
 }
 
 /**
@@ -477,7 +512,10 @@ export async function getCommentTree(context: RequestContext, postId: string): P
   if (rootCommentId && focusCommentId) {
     throw new AppError(422, "ambiguous_comment_permalink", "Choose either rootCommentId or focusCommentId");
   }
-  const rootKey = focusCommentId ? `focus:${focusCommentId}` : rootCommentId ?? "";
+  // Versioning the cached wire payload prevents a pre-count tree from being served without the
+  // O(1) collapse metadata during a rolling deployment.
+  const logicalRootKey = focusCommentId ? `focus:${focusCommentId}` : rootCommentId ?? "";
+  const rootKey = `v${COMMENT_TREE_CACHE_VERSION}:${logicalRootKey}`;
   const cache = await context.db.prepare(
     `SELECT payload_json FROM comment_tree_cache
      WHERE post_id = ? AND sort = 'best' AND requested_count = ?
@@ -571,8 +609,10 @@ export async function loadMoreComments(context: RequestContext, postId: string):
     const byComment = await viewerVotes(context, comments.map((comment) => comment.id));
     comments.forEach((comment) => { comment.viewer_vote = byComment.get(comment.id) ?? 0; });
   }
+  const descendantCounts = selectedDescendantCounts(comments);
   return jsonResponse({
-    comments: comments.map((comment) => rawCommentJson(context, comment)),
+    comments: comments.map((comment) =>
+      rawCommentJson(context, comment, descendantCounts.get(comment.id) ?? 0)),
     cursors,
     corpusTruncated: corpus.truncated,
   });

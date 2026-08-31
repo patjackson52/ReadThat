@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { ApiError, api } from "./api";
 import { useApp } from "./app-context";
 import { readCache, writeCache } from "./db";
@@ -67,7 +67,7 @@ export function FeedPage() {
       });
       if (auth) void api.markCommunityVisited(subredditName);
     }
-    document.title = subredditName ? `r/${subredditName} · ReadThat` : "ReadThat — your communities";
+    document.title = subredditName ? `r/${subredditName} · Read That` : "Read That — your communities";
     return () => { live = false; };
     // `load` deliberately resets with the cache key; including it would restart after every page merge.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,9 +98,9 @@ export function FeedPage() {
     {subredditName && <section className="community-hero">
       <div className="community-avatar">r/</div>
       <div><p className="eyebrow">Community</p><h1>{community?.displayName ?? `r/${subredditName}`}</h1><p>{community?.description || "Posts from this community"}</p><span>{community ? `${community.subscriberCount.toLocaleString()} members · ${community.accessType}` : "Loading community…"}</span></div>
-      <button className={community?.viewerRole ? "secondary-button" : "primary-button"} type="button" onClick={() => void toggleJoin()}>{community?.viewerRole ? "Joined" : "Join"}</button>
+      <div className="community-hero-actions"><Link className="secondary-button" to={`/media?subreddit=${encodeURIComponent(subredditName)}`} viewTransition><Icon name="video" /> Media</Link><button className={community?.viewerRole ? "secondary-button" : "primary-button"} type="button" onClick={() => void toggleJoin()}>{community?.viewerRole ? "Joined" : "Join"}</button></div>
     </section>}
-    {!subredditName && <header className="feed-heading"><div><p className="eyebrow">Server-driven feed</p><h1>Your front page</h1><p>Fresh conversations, rendered from safe, versioned SDUI cells.</p></div><button className="icon-button" type="button" aria-label="Refresh feed" onClick={() => void load(false)}><Icon name="refresh" /></button></header>}
+    {!subredditName && <><nav className="feed-view-switch" aria-label="Feed view"><Link className="active" to="/" viewTransition><Icon name="home" /> Conversations</Link><Link to="/media" viewTransition><Icon name="video" /> Media</Link></nav><header className="feed-heading"><div><p className="eyebrow">Your communities</p><h1>Good conversations, all in one place</h1><p>Fresh posts from communities you follow, plus a few worth discovering.</p></div><button className="icon-button" type="button" aria-label="Refresh feed" onClick={() => void load(false)}><Icon name="refresh" /></button></header></>}
     {cachedAt && <div className="cache-notice"><Icon name={online ? "refresh" : "offline"} /> Showing your saved feed from {new Date(cachedAt).toLocaleString()}{online ? " while it refreshes." : "."}</div>}
     {error && groups.length > 0 && <div className="inline-error" role="status">{error} <button type="button" onClick={() => void load(false)}>Try again</button></div>}
     {loading && groups.length === 0 ? <div className="feed-skeleton" aria-label="Loading feed">{[0, 1, 2].map((index) => <div key={index}><i /><i /><i /></div>)}</div>

@@ -12,8 +12,6 @@ const UPLOAD_TTL_MS = 60 * 60 * 1_000;
 const STREAM_IMPORT_TTL_MS = 2 * 60 * 60 * 1_000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 const STREAM_POSTER_MAX_EDGE_PX = 1_080;
-const STREAM_POSTER_MAX_TIME_SECONDS = 5;
-const STREAM_POSTER_FRACTION = 0.2;
 const SIGNED_MEDIA_EXPIRY_BUCKET_MS = 60_000;
 
 const createUploadSchema = z.object({
@@ -86,44 +84,41 @@ function extension(contentType: string): string {
 }
 
 /**
- * Pick an early representative frame without using Stream's 0s default, which is commonly a
- * black/fade-in frame. Long videos stay near the start and short clips use their first 20%.
+ * The preview must be the same frame where playback begins. This makes the decoded preview a
+ * continuity surface rather than a representative thumbnail that visibly jumps at autoplay.
  */
-export function streamThumbnailTimestampPct(durationSeconds: number | null): number {
-  if (durationSeconds === null || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
-    return STREAM_POSTER_FRACTION;
-  }
-  return Math.min(STREAM_POSTER_FRACTION, STREAM_POSTER_MAX_TIME_SECONDS / durationSeconds);
+export function streamThumbnailTimestampPct(_durationSeconds: number | null): number {
+  return 0;
+}
+
+function nearestEvenPixel(value: number): number {
+  return Math.max(2, Math.round(value / 2) * 2);
 }
 
 /**
- * Existing videos may predate the non-zero default above. Stream can generate a static JPEG at a
- * requested timestamp, so normalize every returned poster URL as well. Exact-aspect dimensions
- * avoid the default square crop while bounding mobile decode and transfer cost.
+ * Normalize existing videos too: Stream can generate the first frame on demand even when the
+ * stored default thumbnail points later into the clip. Exact-aspect dimensions avoid the default
+ * square crop while bounding mobile decode and transfer cost.
  */
 export function optimizedStreamPosterUrl(
   thumbnailUrl: string | null,
   width: number | null,
   height: number | null,
-  durationSeconds: number | null,
+  _durationSeconds: number | null,
 ): string | null {
   if (!thumbnailUrl) return null;
   try {
     const poster = new URL(thumbnailUrl);
     if (!poster.pathname.includes("/thumbnails/thumbnail.")) return thumbnailUrl;
 
-    const wholeSecond = durationSeconds !== null && durationSeconds > 2
-      ? Math.min(
-          STREAM_POSTER_MAX_TIME_SECONDS,
-          Math.max(1, Math.floor(durationSeconds * STREAM_POSTER_FRACTION)),
-        )
-      : 0;
-    poster.searchParams.set("time", `${wholeSecond}s`);
+    poster.searchParams.set("time", "0s");
 
     if (width !== null && height !== null && width > 0 && height > 0) {
       const scale = Math.min(1, STREAM_POSTER_MAX_EDGE_PX / Math.max(width, height));
-      poster.searchParams.set("width", String(Math.max(1, Math.round(width * scale))));
-      poster.searchParams.set("height", String(Math.max(1, Math.round(height * scale))));
+      // Stream rejects odd width/height query values. Round to the nearest even pixel while
+      // retaining the source aspect ratio and the bounded mobile decode size.
+      poster.searchParams.set("width", String(nearestEvenPixel(width * scale)));
+      poster.searchParams.set("height", String(nearestEvenPixel(height * scale)));
       poster.searchParams.set("fit", "crop");
     }
     return poster.toString();
@@ -427,28 +422,37 @@ export async function signedImageUrl(
 }
 
 interface AvatarImageRow {
+  id: string;
+  delivery_provider: "r2" | "images";
   image_uid: string | null;
 }
 
 /**
  * Keeps a stable, versioned profile URL in API payloads while rotating the
- * short-lived Cloudflare Images signature at the edge. Avatar ownership is
- * established when users.avatar_media_id is updated, never from client URLs.
+ * short-lived delivery signature at the edge. User-uploaded avatars continue
+ * to use Cloudflare Images, while trusted fixtures may retain their R2 source.
+ * Avatar ownership is established when users.avatar_media_id is updated,
+ * never from client URLs.
  */
 export async function serveUserAvatar(
   context: RequestContext,
   requestedUsername: string,
 ): Promise<Response> {
   const row = await context.db.prepare(
-    `SELECT m.image_uid
+    `SELECT m.id, m.delivery_provider, m.image_uid
      FROM users u
      JOIN media m ON m.id = u.avatar_media_id
      WHERE u.username = ? AND m.kind = 'image' AND m.status = 'ready'
-       AND m.delivery_provider = 'images' AND m.image_status = 'ready'`,
+       AND (
+         (m.delivery_provider = 'images' AND m.image_status = 'ready')
+         OR m.delivery_provider = 'r2'
+       )`,
   ).bind(requestedUsername.toLowerCase()).first<AvatarImageRow>();
-  if (!row?.image_uid) throw new AppError(404, "avatar_not_found", "Profile image not found");
+  if (!row) throw new AppError(404, "avatar_not_found", "Profile image not found");
 
-  const location = await signedImageUrl(context, row.image_uid, "feed");
+  const location = row.delivery_provider === "images" && row.image_uid
+    ? await signedImageUrl(context, row.image_uid, "feed")
+    : await signedMediaUrl(context, row.id);
   return new Response(null, {
     status: 302,
     headers: {

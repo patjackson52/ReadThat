@@ -107,13 +107,90 @@ export interface ActionBarCell {
   version: number;
 }
 
-export type FeedCell = MetadataCell | TitleCell | TextCell | LinkCell | AnnouncementCell | ImageCell | ImageCarouselCell | VideoCell | ActionBarCell;
+export interface AdHeaderCell {
+  type: "ad_header";
+  cellId: string;
+  adId: string;
+  author: string;
+  avatarUrl: string | null;
+  label: string;
+}
+
+export interface AdTitleCell { type: "ad_title"; cellId: string; adId: string; text: string }
+
+export interface AdMediaItem {
+  creativeId: string;
+  kind: "image" | "video";
+  placeholderColor: number;
+  aspectRatio: number;
+  altText: string;
+  imageUrl?: string | null;
+  hlsUrl?: string | null;
+  dashUrl?: string | null;
+  posterUrl?: string | null;
+  fallbackUrl?: string | null;
+  durationSeconds?: number | null;
+  cacheKey?: string | null;
+}
+
+export interface AdMediaCell {
+  type: "ad_media";
+  cellId: string;
+  adId: string;
+  items: AdMediaItem[];
+  destinationUrl: string;
+  displayDomain: string;
+  ctaLabel: string;
+}
+
+export interface AdSummaryCell {
+  type: "ad_summary";
+  cellId: string;
+  adId: string;
+  text: string;
+  disclosureLabel: string;
+}
+
+export interface RelatedPost {
+  postId: string;
+  title: string;
+  subreddit: string;
+  score: number;
+}
+
+export interface AdRelatedPostsCell {
+  type: "ad_related_posts";
+  cellId: string;
+  adId: string;
+  posts: RelatedPost[];
+  disclosureLabel: string;
+}
+
+export interface AdActionBarCell {
+  type: "ad_actionbar";
+  cellId: string;
+  adId: string;
+  commentCount: number;
+}
+
+export type FeedCell = MetadataCell | TitleCell | TextCell | LinkCell | AnnouncementCell
+  | ImageCell | ImageCarouselCell | VideoCell | ActionBarCell | AdHeaderCell | AdTitleCell
+  | AdMediaCell | AdSummaryCell | AdRelatedPostsCell | AdActionBarCell;
 export interface FeedGroup { groupId: string; cells: FeedCell[] }
 export interface FeedPage {
   schemaVersion: number;
   feedId: string;
   serverTime: number;
   groups: FeedGroup[];
+  nextCursor: string | null;
+}
+
+export interface MediaFeedPage {
+  schemaVersion: number;
+  feedId: string;
+  snapshotAt: number;
+  anchorIncluded: boolean;
+  items: Post[];
   nextCursor: string | null;
 }
 
@@ -168,6 +245,8 @@ export interface CommentNode {
   viewerVote: VoteValue;
   createdAt: number;
   createdAgoMin: number;
+  /** Comment nodes already present below this node; load-more cursors are excluded. */
+  descendantCount: number;
   children: TreeNode[];
   pending?: boolean;
 }
@@ -258,7 +337,69 @@ export interface OutboxEntry {
 }
 
 export type SearchItem =
-  | { type: "post"; id: string; subreddit: string; author: string; kind: PostKind; title: string; body: string | null; url: string | null; score: number; commentCount: number; viewerVote: VoteValue; createdAt: number }
+  | { type: "post"; id: string; subreddit: string; author: string; kind: PostKind; title: string; body: string | null; url: string | null; score: number; commentCount: number; viewerVote: VoteValue; createdAt: number; media?: { id: string; thumbnailUrl: string | null; width: number | null; height: number | null; durationSeconds: number | null; cacheKey: string | null } | null }
   | { type: "community"; id: string; name: string; displayName: string; description: string; accessType: string; subscriberCount: number }
   | { type: "comment"; id: string; postId: string; parentId: string | null; author: string; body: string; score: number; viewerVote: VoteValue; createdAt: number; post: { title: string; subreddit: string; score: number; commentCount: number } }
   | { type: "profile"; id: string; username: string; displayName: string; bio: string; avatarUrl: string | null; karma: number };
+
+export type SearchType = "all" | "posts" | "communities" | "comments" | "media" | "profiles";
+export type SearchSort = "relevance" | "hot" | "top" | "new" | "comments";
+export type SearchTime = "all" | "year" | "month" | "week" | "day" | "hour";
+
+export interface SearchSections {
+  communities: SearchItem[];
+  posts: SearchItem[];
+  comments: SearchItem[];
+  media: SearchItem[];
+  profiles: SearchItem[];
+}
+
+export interface SearchPageResponse {
+  query: string;
+  type: SearchType;
+  items?: SearchItem[];
+  sections?: SearchSections;
+  nextCursor: string | null;
+}
+
+export interface SearchTypeahead {
+  query: string;
+  completions: string[];
+  communities: SearchItem[];
+  profiles: SearchItem[];
+}
+
+export interface SearchDiscover {
+  trending: Array<{
+    id: string;
+    query: string;
+    subreddit: string;
+    kind: PostKind;
+    score: number;
+    commentCount: number;
+    createdAt: number;
+  }>;
+  communities: Array<{
+    id: string;
+    name: string;
+    displayName: string;
+    subscriberCount: number;
+  }>;
+}
+
+export interface AdLaunchContext {
+  adId: string;
+  creativeId: string;
+  kind: "image" | "video";
+  aspectRatio: number;
+  altText: string;
+  imageUrl: string | null;
+  hlsUrl: string | null;
+  posterUrl: string | null;
+  fallbackUrl: string | null;
+  cacheKey: string;
+  destinationUrl: string;
+  displayDomain: string;
+  ctaLabel: string;
+  selectedIndex: number;
+}

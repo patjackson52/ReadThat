@@ -1,10 +1,17 @@
 import { assertCanRead, requireSubredditByName } from "./access";
 import { base64UrlEncode, keyedHash, sha256, signOpaquePayload, verifyOpaquePayload } from "./crypto";
+import { mergeShowcaseLanes, STANDARD_FEED_PATTERN } from "./feed-showcase";
 import { AppError } from "./http";
 import { optimizedStreamPosterUrl, signedMediaUrl } from "./media";
 import { interleavePromotedGroups, promotedFeedGroups } from "./promoted";
 import { postMediaJson } from "./posts";
 import type { RequestContext } from "./types";
+
+const FEATURED_CONTEXT_POST = {
+  id: "610466c0-544f-518b-b536-4973bcfe8af9",
+  subreddit: "readthateng",
+  title: "ReadThat: a Reddit clone eng playground",
+} as const;
 
 interface FeedCursor {
   version: 2;
@@ -12,8 +19,19 @@ interface FeedCursor {
   lastRank: number;
   lastId: string;
   subreddit: string | null;
+  /** Ranked organic rows already emitted; absent on legacy cursors. */
+  organicOffset?: number;
+  /** Independent keysets preserve editorial media spacing without skips. */
+  showcaseLanes?: Partial<Record<FeedShowcaseLane, FeedLaneCursor>>;
   /** Binds personalized ordering to the viewer without exposing their user id. */
   audience: string;
+}
+
+type FeedShowcaseLane = "image" | "video" | "other";
+
+interface FeedLaneCursor {
+  lastRank: number;
+  lastId: string;
 }
 
 interface FeedRow {
@@ -50,9 +68,22 @@ interface FeedRow {
   media_source_deleted_at: number | null;
   media_image_uid: string | null;
   media_etag: string | null;
+  featured_context: number;
 }
 
 type WireCell = Record<string, unknown>;
+
+const feedShowcaseLanes = ["image", "video", "other"] as const;
+
+function validFeedLaneCursors(
+  value: FeedCursor["showcaseLanes"],
+): boolean {
+  if (value === undefined || value === null || typeof value !== "object") return value === undefined;
+  return Object.entries(value).every(([lane, state]) => (
+    feedShowcaseLanes.includes(lane as FeedShowcaseLane) &&
+    state !== undefined && Number.isSafeInteger(state.lastRank) && typeof state.lastId === "string"
+  ));
+}
 
 function boundedLimit(value: string | null): number {
   if (value === null) return 12;
@@ -78,7 +109,12 @@ function aspectRatio(row: FeedRow): number {
   return Math.max(0.25, Math.min(4, row.media_width / row.media_height));
 }
 
-async function cellsFor(context: RequestContext, row: FeedRow, now: number): Promise<WireCell[]> {
+async function cellsFor(
+  context: RequestContext,
+  row: FeedRow,
+  now: number,
+  pinned = false,
+): Promise<WireCell[]> {
   const cells: WireCell[] = [{
     type: "metadata",
     cellId: "meta",
@@ -87,7 +123,7 @@ async function cellsFor(context: RequestContext, row: FeedRow, now: number): Pro
     avatarUrl: row.subreddit_avatar_url,
     postedAgo: postedAgo(row.created_at, now),
     createdAt: row.created_at,
-    pinned: false,
+    pinned,
     flair: row.flair_id && row.flair_text && row.flair_background_color && row.flair_text_color ? {
       id: row.flair_id,
       text: row.flair_text,
@@ -196,34 +232,23 @@ async function cellsFor(context: RequestContext, row: FeedRow, now: number): Pro
   return cells;
 }
 
-export async function getFeed(context: RequestContext): Promise<Response> {
-  const limit = boundedLimit(context.url.searchParams.get("limit"));
-  const subreddit = context.url.searchParams.get("subreddit")?.trim().toLowerCase() || null;
-  if (subreddit) {
-    const access = await requireSubredditByName(context.db, subreddit, context.viewer?.id ?? null);
-    assertCanRead(access);
-  }
+function feedLanePredicate(lane: FeedShowcaseLane): string {
+  if (lane === "image") return "p.kind = 'image' AND p.media_id IS NOT NULL";
+  if (lane === "video") return "p.kind = 'video' AND p.media_id IS NOT NULL";
+  return "NOT (p.kind IN ('image', 'video') AND p.media_id IS NOT NULL)";
+}
 
-  const viewerId = context.viewer?.id ?? "";
-  const audience = (await keyedHash(
-    context.env.CURSOR_SECRET,
-    `feed:${viewerId || "anonymous"}`,
-  )).slice(0, 22);
-  const encodedCursor = context.url.searchParams.get("cursor");
-  let cursor: FeedCursor | null = null;
-  if (encodedCursor) {
-    cursor = await verifyOpaquePayload<FeedCursor>(context.env.CURSOR_SECRET, encodedCursor);
-    if (
-      !cursor || cursor.version !== 2 || cursor.subreddit !== subreddit || cursor.audience !== audience ||
-      !Number.isSafeInteger(cursor.snapshotAt) || !Number.isSafeInteger(cursor.lastRank) ||
-      typeof cursor.lastId !== "string"
-    ) {
-      throw new AppError(400, "invalid_cursor", "Feed cursor is invalid or belongs to another feed");
-    }
-  }
-
-  const snapshotAt = cursor?.snapshotAt ?? Date.now();
-  const result = await context.db.prepare(
+function feedLaneStatement(
+  context: RequestContext,
+  lane: FeedShowcaseLane,
+  laneCursor: FeedLaneCursor | undefined,
+  viewerId: string,
+  snapshotAt: number,
+  subreddit: string | null,
+  pageSize: number,
+): D1PreparedStatement {
+  const predicate = feedLanePredicate(lane);
+  return context.db.prepare(
     `WITH subscribed AS (
        SELECT p.id, p.rank_value + 4000000000000000 AS personalized_rank
        FROM subreddit_members membership
@@ -234,6 +259,7 @@ export async function getFeed(context: RequestContext): Promise<Response> {
          AND (s.access_type <> 'private' OR membership.role IN ('member', 'moderator', 'owner'))
          AND p.deleted_at IS NULL AND p.created_at <= ?
          AND (? = '' OR s.name = ?)
+         AND p.id <> ? AND ${predicate}
          AND (? = 0 OR p.rank_value + 4000000000000000 < ?
               OR (p.rank_value + 4000000000000000 = ? AND p.id < ?))
        ORDER BY p.rank_value DESC, p.id DESC
@@ -247,6 +273,7 @@ export async function getFeed(context: RequestContext): Promise<Response> {
        WHERE p.deleted_at IS NULL AND p.created_at <= ?
          AND (s.access_type <> 'private' OR visibility.role IN ('member', 'moderator', 'owner'))
          AND (? = '' OR s.name = ?)
+         AND p.id <> ? AND ${predicate}
          AND NOT EXISTS (
            SELECT 1 FROM subreddit_members subscribed_membership
            WHERE subscribed_membership.subreddit_id = s.id
@@ -274,7 +301,7 @@ export async function getFeed(context: RequestContext): Promise<Response> {
             m.thumbnail_url AS media_thumbnail_url, m.preview_url AS media_preview_url,
             m.source_deleted_at AS media_source_deleted_at,
             m.image_uid AS media_image_uid, m.etag AS media_etag,
-            candidates.personalized_rank AS rank_value
+            candidates.personalized_rank AS rank_value, 0 AS featured_context
      FROM candidates
      JOIN posts p ON p.id = candidates.id
      JOIN subreddits s ON s.id = p.subreddit_id
@@ -289,6 +316,178 @@ export async function getFeed(context: RequestContext): Promise<Response> {
     snapshotAt,
     subreddit ?? "",
     subreddit ?? "",
+    FEATURED_CONTEXT_POST.id,
+    laneCursor ? 1 : 0,
+    laneCursor?.lastRank ?? 0,
+    laneCursor?.lastRank ?? 0,
+    laneCursor?.lastId ?? "",
+    pageSize,
+    viewerId,
+    snapshotAt,
+    subreddit ?? "",
+    subreddit ?? "",
+    FEATURED_CONTEXT_POST.id,
+    viewerId,
+    laneCursor ? 1 : 0,
+    laneCursor?.lastRank ?? 0,
+    laneCursor?.lastRank ?? 0,
+    laneCursor?.lastId ?? "",
+    pageSize,
+    viewerId,
+    pageSize,
+  );
+}
+
+async function featuredContextRow(
+  context: RequestContext,
+  viewerId: string,
+  snapshotAt: number,
+): Promise<FeedRow | null> {
+  return context.db.prepare(
+    `SELECT p.id, s.name AS subreddit_name, s.avatar_url AS subreddit_avatar_url,
+            u.username AS author_username,
+            p.kind, p.title, p.body, p.url, p.media_id, p.flair_id,
+            pf.text AS flair_text, pf.background_color AS flair_background_color,
+            pf.text_color AS flair_text_color, p.crosspost_parent_id,
+            p.score, p.comment_count, COALESCE(v.value, 0) AS viewer_vote,
+            p.created_at, p.version, m.width AS media_width, m.height AS media_height,
+            m.duration_seconds AS media_duration_seconds, m.alt_text AS media_alt_text,
+            m.stream_status AS media_stream_status, m.stream_progress AS media_stream_progress,
+            m.hls_url AS media_hls_url, m.dash_url AS media_dash_url,
+            m.thumbnail_url AS media_thumbnail_url, m.preview_url AS media_preview_url,
+            m.source_deleted_at AS media_source_deleted_at,
+            m.image_uid AS media_image_uid, m.etag AS media_etag,
+            p.rank_value AS rank_value, 1 AS featured_context
+     FROM posts p
+     JOIN subreddits s ON s.id = p.subreddit_id
+     JOIN users u ON u.id = p.author_id
+     LEFT JOIN votes v ON v.target_type = 'post' AND v.target_id = p.id AND v.user_id = ?
+     LEFT JOIN media m ON m.id = p.media_id
+     LEFT JOIN post_flairs pf ON pf.id = p.flair_id
+     WHERE p.id = ? AND s.name = ? AND p.title = ?
+       AND s.access_type = 'public' AND p.deleted_at IS NULL AND p.created_at <= ?`,
+  ).bind(
+    viewerId,
+    FEATURED_CONTEXT_POST.id,
+    FEATURED_CONTEXT_POST.subreddit,
+    FEATURED_CONTEXT_POST.title,
+    snapshotAt,
+  ).first<FeedRow>();
+}
+
+export async function getFeed(context: RequestContext): Promise<Response> {
+  const limit = boundedLimit(context.url.searchParams.get("limit"));
+  const subreddit = context.url.searchParams.get("subreddit")?.trim().toLowerCase() || null;
+  if (subreddit) {
+    const access = await requireSubredditByName(context.db, subreddit, context.viewer?.id ?? null);
+    assertCanRead(access);
+  }
+
+  const viewerId = context.viewer?.id ?? "";
+  const audience = (await keyedHash(
+    context.env.CURSOR_SECRET,
+    `feed:${viewerId || "anonymous"}`,
+  )).slice(0, 22);
+  const encodedCursor = context.url.searchParams.get("cursor");
+  let cursor: FeedCursor | null = null;
+  if (encodedCursor) {
+    cursor = await verifyOpaquePayload<FeedCursor>(context.env.CURSOR_SECRET, encodedCursor);
+    if (
+      !cursor || cursor.version !== 2 || cursor.subreddit !== subreddit || cursor.audience !== audience ||
+      !Number.isSafeInteger(cursor.snapshotAt) || !Number.isSafeInteger(cursor.lastRank) ||
+      typeof cursor.lastId !== "string" ||
+      (cursor.organicOffset !== undefined && (
+        !Number.isSafeInteger(cursor.organicOffset) || cursor.organicOffset < 0
+      )) || !validFeedLaneCursors(cursor.showcaseLanes)
+    ) {
+      throw new AppError(400, "invalid_cursor", "Feed cursor is invalid or belongs to another feed");
+    }
+  }
+
+  const snapshotAt = cursor?.snapshotAt ?? Date.now();
+  const legacyCursor = cursor !== null && cursor.showcaseLanes === undefined;
+  const legacyResult = legacyCursor ? await context.db.prepare(
+    `WITH featured_context AS (
+       SELECT p.id, p.rank_value AS personalized_rank, 1 AS featured_context
+       FROM posts p
+       JOIN subreddits s ON s.id = p.subreddit_id
+       WHERE ? = 0 AND p.id = ? AND s.name = ? AND p.title = ?
+         AND s.access_type = 'public' AND p.deleted_at IS NULL
+     ), subscribed AS (
+       SELECT p.id, p.rank_value + 4000000000000000 AS personalized_rank,
+              0 AS featured_context
+       FROM subreddit_members membership
+       JOIN subreddits s ON s.id = membership.subreddit_id
+       JOIN posts p ON p.subreddit_id = membership.subreddit_id
+       WHERE membership.user_id = ?
+         AND membership.role IN ('subscriber', 'member', 'moderator', 'owner')
+         AND (s.access_type <> 'private' OR membership.role IN ('member', 'moderator', 'owner'))
+         AND p.deleted_at IS NULL AND p.created_at <= ?
+         AND (? = '' OR s.name = ?)
+         AND p.id <> ?
+         AND (? = 0 OR p.rank_value + 4000000000000000 < ?
+              OR (p.rank_value + 4000000000000000 = ? AND p.id < ?))
+       ORDER BY p.rank_value DESC, p.id DESC
+       LIMIT ?
+     ), discovery AS (
+       SELECT p.id, p.rank_value AS personalized_rank, 0 AS featured_context
+       FROM posts p
+       JOIN subreddits s ON s.id = p.subreddit_id
+       LEFT JOIN subreddit_members visibility
+         ON visibility.subreddit_id = s.id AND visibility.user_id = ?
+       WHERE p.deleted_at IS NULL AND p.created_at <= ?
+         AND (s.access_type <> 'private' OR visibility.role IN ('member', 'moderator', 'owner'))
+         AND (? = '' OR s.name = ?)
+         AND p.id <> ?
+         AND NOT EXISTS (
+           SELECT 1 FROM subreddit_members subscribed_membership
+           WHERE subscribed_membership.subreddit_id = s.id
+             AND subscribed_membership.user_id = ?
+             AND subscribed_membership.role IN ('subscriber', 'member', 'moderator', 'owner')
+         )
+         AND (? = 0 OR p.rank_value < ? OR (p.rank_value = ? AND p.id < ?))
+       ORDER BY p.rank_value DESC, p.id DESC
+       LIMIT ?
+     ), candidates AS (
+       SELECT id, personalized_rank, featured_context FROM featured_context
+       UNION ALL
+       SELECT id, personalized_rank, featured_context FROM subscribed
+       UNION ALL
+       SELECT id, personalized_rank, featured_context FROM discovery
+     )
+     SELECT p.id, s.name AS subreddit_name, s.avatar_url AS subreddit_avatar_url,
+            u.username AS author_username,
+            p.kind, p.title, p.body, p.url, p.media_id, p.flair_id,
+            pf.text AS flair_text, pf.background_color AS flair_background_color,
+            pf.text_color AS flair_text_color, p.crosspost_parent_id,
+            p.score, p.comment_count, COALESCE(v.value, 0) AS viewer_vote,
+            p.created_at, p.version, m.width AS media_width, m.height AS media_height,
+            m.duration_seconds AS media_duration_seconds, m.alt_text AS media_alt_text,
+            m.stream_status AS media_stream_status, m.stream_progress AS media_stream_progress,
+            m.hls_url AS media_hls_url, m.dash_url AS media_dash_url,
+            m.thumbnail_url AS media_thumbnail_url, m.preview_url AS media_preview_url,
+            m.source_deleted_at AS media_source_deleted_at,
+            m.image_uid AS media_image_uid, m.etag AS media_etag,
+            candidates.personalized_rank AS rank_value, candidates.featured_context
+     FROM candidates
+     JOIN posts p ON p.id = candidates.id
+     JOIN subreddits s ON s.id = p.subreddit_id
+     JOIN users u ON u.id = p.author_id
+     LEFT JOIN votes v ON v.target_type = 'post' AND v.target_id = p.id AND v.user_id = ?
+     LEFT JOIN media m ON m.id = p.media_id
+     LEFT JOIN post_flairs pf ON pf.id = p.flair_id
+     ORDER BY candidates.featured_context DESC, candidates.personalized_rank DESC, p.id DESC
+     LIMIT ?`,
+  ).bind(
+    cursor ? 1 : 0,
+    FEATURED_CONTEXT_POST.id,
+    FEATURED_CONTEXT_POST.subreddit,
+    FEATURED_CONTEXT_POST.title,
+    viewerId,
+    snapshotAt,
+    subreddit ?? "",
+    subreddit ?? "",
+    FEATURED_CONTEXT_POST.id,
     cursor ? 1 : 0,
     cursor?.lastRank ?? 0,
     cursor?.lastRank ?? 0,
@@ -298,6 +497,7 @@ export async function getFeed(context: RequestContext): Promise<Response> {
     snapshotAt,
     subreddit ?? "",
     subreddit ?? "",
+    FEATURED_CONTEXT_POST.id,
     viewerId,
     cursor ? 1 : 0,
     cursor?.lastRank ?? 0,
@@ -305,23 +505,82 @@ export async function getFeed(context: RequestContext): Promise<Response> {
     cursor?.lastId ?? "",
     limit + 1,
     viewerId,
-    limit + 1,
-  ).all<FeedRow>();
+    limit + (cursor === null ? 2 : 1),
+  ).all<FeedRow>() : null;
 
-  const hasMore = result.results.length > limit;
-  const rows = result.results.slice(0, limit);
+  let featuredRow: FeedRow | null = null;
+  let rows: FeedRow[];
+  let hasMore: boolean;
+  let nextShowcaseLanes: FeedCursor["showcaseLanes"];
+  if (legacyResult) {
+    const rankedRows = legacyResult.results.filter((row) => row.featured_context === 0);
+    rows = rankedRows.slice(0, limit);
+    hasMore = rankedRows.length > limit;
+  } else {
+    const lanePageSize = limit + 1;
+    const laneStatements = feedShowcaseLanes.map((lane) => feedLaneStatement(
+      context,
+      lane,
+      cursor?.showcaseLanes?.[lane],
+      viewerId,
+      snapshotAt,
+      subreddit,
+      lanePageSize,
+    ));
+    const [loadedFeatured, laneResults] = await Promise.all([
+      cursor === null ? featuredContextRow(context, viewerId, snapshotAt) : Promise.resolve(null),
+      context.db.batch<FeedRow>(laneStatements),
+    ]);
+    featuredRow = loadedFeatured;
+    const laneRows: Record<FeedShowcaseLane, FeedRow[]> = {
+      image: laneResults[0]?.results ?? [],
+      video: laneResults[1]?.results ?? [],
+      other: laneResults[2]?.results ?? [],
+    };
+    const merged = mergeShowcaseLanes(
+      laneRows,
+      STANDARD_FEED_PATTERN,
+      cursor?.organicOffset ?? 0,
+      limit,
+    );
+    rows = merged.items;
+    hasMore = merged.hasMore;
+    nextShowcaseLanes = { ...cursor?.showcaseLanes };
+    for (const lane of feedShowcaseLanes) {
+      const consumed = merged.consumedLast[lane];
+      if (consumed) {
+        nextShowcaseLanes[lane] = { lastRank: consumed.rank_value, lastId: consumed.id };
+      }
+    }
+  }
   const now = Date.now();
   const organicGroups = await Promise.all(rows.map(async (row) => ({
     groupId: row.id,
     cells: await cellsFor(context, row, now),
   })));
-  // Editorial demo units are page-1 home content and never participate in the
-  // ranked cursor, so pagination remains stable and subreddit feeds stay clean.
-  const groups = cursor === null && subreddit === null
+  // Ads are positioned against the signed global organic offset but never
+  // participate in ranking. Legacy cursors omit that offset and safely skip ads
+  // rather than repeating a campaign after a deploy.
+  const promotedOrganicOffset = cursor === null ? 0 : cursor.organicOffset ?? null;
+  const rankedGroups = subreddit === null
     && context.url.searchParams.get("includePromoted") === "true"
-    ? interleavePromotedGroups(organicGroups, promotedFeedGroups())
+    && promotedOrganicOffset !== null
+    ? interleavePromotedGroups(
+        organicGroups,
+        promotedFeedGroups(context.url.origin),
+        promotedOrganicOffset,
+      )
     : organicGroups;
+  const groups = featuredRow
+    ? [{
+        groupId: featuredRow.id,
+        cells: await cellsFor(context, featuredRow, now, true),
+      }, ...rankedGroups]
+    : rankedGroups;
   const last = rows.at(-1);
+  const nextOrganicOffset = cursor === null
+    ? rows.length
+    : cursor.organicOffset === undefined ? undefined : cursor.organicOffset + rows.length;
   const nextCursor = hasMore && last
     ? await signOpaquePayload<FeedCursor>(context.env.CURSOR_SECRET, {
       version: 2,
@@ -330,6 +589,8 @@ export async function getFeed(context: RequestContext): Promise<Response> {
       lastId: last.id,
       subreddit,
       audience,
+      ...(nextOrganicOffset === undefined ? {} : { organicOffset: nextOrganicOffset }),
+      ...(nextShowcaseLanes === undefined ? {} : { showcaseLanes: nextShowcaseLanes }),
     })
     : null;
   const payload = {

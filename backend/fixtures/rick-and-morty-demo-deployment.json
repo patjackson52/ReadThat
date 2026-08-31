@@ -1,0 +1,172 @@
+{
+  "fixtureVersion": 1,
+  "feedBalanceRevision": 2,
+  "deployedAt": "2026-08-30T20:12:42Z",
+  "adsUpdatedAt": "2026-08-31T03:09:49Z",
+  "apiBaseUrl": "https://sdui-reddit-api.patjackson52.workers.dev",
+  "workerVersionId": "27b1328d-e7d0-4c4e-91c5-fd2543985b67",
+  "resources": {
+    "d1Database": "sdui-reddit",
+    "r2Bucket": "sdui-reddit-media",
+    "r2Prefix": "demo/rick-and-morty/v1/"
+  },
+  "sources": {
+    "characterAndEpisodeApi": "https://rickandmortyapi.com/api",
+    "rankedEpisodes": "https://www.listobsession.com/best-rick-and-morty-episodes/",
+    "rankingMethodology": "https://www.listobsession.com/best-rick-and-morty-episodes-methodology/"
+  },
+  "totals": {
+    "fictionalUsers": 22,
+    "communities": 6,
+    "posts": 11,
+    "comments": 61,
+    "portraitMedia": 22,
+    "imagePosts": 6
+  },
+  "feedBalance": {
+    "rankingFormula": "score * 1000000000 + created_at",
+    "scorePointRecencyEquivalentDays": 11.574,
+    "publishedAtRange": [
+      "2026-08-28T19:00:00.000Z",
+      "2026-08-30T04:35:00.000Z"
+    ],
+    "seedUpvoteRange": [1, 2],
+    "rickAndMortyPostsInTop12": 2,
+    "rickAndMortyPostsInTop30": 6,
+    "rickAndMortyPostsInTop50": 10,
+    "longestRickAndMortyRunInTop50": 2
+  },
+  "profileUsernames": [
+    "rick_sanchez",
+    "morty_smith",
+    "summer_smith",
+    "beth_smith",
+    "jerry_smith",
+    "space_beth",
+    "birdperson",
+    "dr_wong",
+    "evil_morty",
+    "jaguar",
+    "jerry_c137",
+    "jessica_cronenberg",
+    "jessica",
+    "mr_meeseeks",
+    "mr_poopybutthole",
+    "pickle_rick",
+    "sleepy_gary",
+    "squanchy",
+    "summer_c137",
+    "president_curtis",
+    "unity_hivemind",
+    "beth_c137"
+  ],
+  "generalCommunity": {
+    "name": "dimension_c137",
+    "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/dimension_c137",
+    "leadPostUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/d33c5ba9-ac6b-5f56-a45f-c196e8ceb896"
+  },
+  "promotedCampaign": {
+    "candidate": "Patrick Jackson",
+    "role": "Reddit Client Platform Engineer",
+    "adCount": 5,
+    "mediaItemsPerAd": 1,
+    "evidenceLinks": "placeholder",
+    "orderedAdIds": [
+      "patrick-rick-verdict-01",
+      "patrick-evil-morty-systems-02",
+      "patrick-dr-wong-observability-03",
+      "patrick-space-beth-resilience-04",
+      "patrick-unity-platform-05"
+    ],
+    "destinations": [
+      {
+        "adId": "patrick-rick-verdict-01",
+        "url": "https://patrickjackson.dev/case-studies/readthat/comments/"
+      },
+      {
+        "adId": "patrick-evil-morty-systems-02",
+        "url": "https://patrickjackson.dev/resume"
+      },
+      {
+        "adId": "patrick-dr-wong-observability-03",
+        "url": "https://patrickjackson.dev/case-studies/readthat/observability/"
+      },
+      {
+        "adId": "patrick-space-beth-resilience-04",
+        "url": "https://patrickjackson.dev/case-studies/readthat/data-layer/"
+      },
+      {
+        "adId": "patrick-unity-platform-05",
+        "url": "https://patrickjackson.dev/case-studies/readthat/kmp/"
+      }
+    ]
+  },
+  "episodeCommunities": [
+    {
+      "rank": 1,
+      "episode": "Total Rickall",
+      "code": "S02E04",
+      "name": "memory_parasites",
+      "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/memory_parasites",
+      "postUrls": [
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/3ba5e5dc-ee36-5c49-89c1-c7c1ee26d90b",
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/1535bb2e-6bb3-5ddf-86d6-35e72d3da3d2"
+      ]
+    },
+    {
+      "rank": 2,
+      "episode": "Pickle Rick",
+      "code": "S03E03",
+      "name": "pickle_rick",
+      "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/pickle_rick",
+      "postUrls": [
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/f28f0b19-0707-5be6-af47-826df38ce503",
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/b8a7359a-6cba-55f8-958f-70ae804e640d"
+      ]
+    },
+    {
+      "rank": 3,
+      "episode": "The Ricklantis Mixup",
+      "code": "S03E07",
+      "name": "tales_from_citadel",
+      "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/tales_from_citadel",
+      "postUrls": [
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/2e74b608-0428-5c3e-9aa7-034a78d28071",
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/0b2e6cf6-03bf-5c27-b7c3-e3f65693009e"
+      ]
+    },
+    {
+      "rank": 4,
+      "episode": "Rick Potion #9",
+      "code": "S01E06",
+      "name": "cronenberg_support",
+      "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/cronenberg_support",
+      "postUrls": [
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/48632a6f-082f-5f2a-a11f-47945faf6623",
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/86a3a27b-60a1-5eb8-a877-118bfdb4889b"
+      ]
+    },
+    {
+      "rank": 5,
+      "episode": "Meeseeks and Destroy",
+      "code": "S01E05",
+      "name": "meeseeks_helpdesk",
+      "pageUrl": "https://sdui-reddit-api.patjackson52.workers.dev/r/meeseeks_helpdesk",
+      "postUrls": [
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/86643fe5-45ab-5b70-be06-987efcdc64d4",
+        "https://sdui-reddit-api.patjackson52.workers.dev/post/b669d5e3-30b4-5079-a160-379a731464bf"
+      ]
+    }
+  ],
+  "verification": {
+    "sourceRecordsAndChecksums": "passed",
+    "d1IdentityCollisionGuard": "passed",
+    "d1Counts": "passed",
+    "liveProfilesAndAvatarBytes": "passed",
+    "liveFeedsPostsAndRecursiveComments": "passed",
+    "browserCommunityProfileAndThread": "passed",
+    "liveFeedBalance": "passed",
+    "promotedFeedApiAndPortraits": "passed",
+    "promotedWebRendering": "passed"
+  }
+}

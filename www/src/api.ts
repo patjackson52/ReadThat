@@ -11,9 +11,17 @@ import type {
   CommentTree,
   CommunityDrawer,
   FeedPage,
+  MediaFeedPage,
   OutboxEntry,
   Post,
   SearchItem,
+  SearchSections,
+  SearchDiscover,
+  SearchPageResponse,
+  SearchSort,
+  SearchTime,
+  SearchType,
+  SearchTypeahead,
   Session,
   Subreddit,
   UploadSession,
@@ -22,7 +30,7 @@ import type {
   VoteValue,
 } from "./types";
 
-export function flattenSearchSections(sections: Record<string, SearchItem[]>): SearchItem[] {
+export function flattenSearchSections(sections: Record<string, SearchItem[]> | SearchSections): SearchItem[] {
   const seen = new Set<string>();
   return Object.values(sections).flat().filter((item) => {
     const key = `${item.type}:${item.id}`;
@@ -123,15 +131,28 @@ export class ApiClient {
     const parameters = new URLSearchParams({ limit: "12" });
     if (cursor) parameters.set("cursor", cursor);
     if (subreddit) parameters.set("subreddit", subreddit);
+    else parameters.set("includePromoted", "true");
     return this.request<FeedPage>(`/v1/feed?${parameters.toString()}`);
+  }
+
+  async mediaFeed(cursor: string | null, options: { subreddit?: string; anchorPostId?: string } = {}): Promise<MediaFeedPage> {
+    const parameters = new URLSearchParams({ limit: "8" });
+    if (cursor) parameters.set("cursor", cursor);
+    if (options.subreddit) parameters.set("subreddit", options.subreddit);
+    if (!cursor && options.anchorPostId) parameters.set("anchorPostId", options.anchorPostId);
+    return this.request<MediaFeedPage>(`/v1/feeds/media?${parameters.toString()}`);
   }
 
   async post(id: string): Promise<Post> {
     return (await this.request<{ post: Post }>(`/v1/posts/${encodeURIComponent(id)}`)).post;
   }
 
-  async comments(postId: string): Promise<CommentTree> {
-    return this.request<CommentTree>(`/v1/posts/${encodeURIComponent(postId)}/comments?count=100&depth=10`);
+  async comments(postId: string, focusCommentId?: string): Promise<CommentTree> {
+    const parameters = new URLSearchParams({ count: "100", depth: "10" });
+    if (focusCommentId) parameters.set("focusCommentId", focusCommentId);
+    return this.request<CommentTree>(
+      `/v1/posts/${encodeURIComponent(postId)}/comments?${parameters.toString()}`,
+    );
   }
 
   async loadMoreComments(postId: string, childIds: string[]): Promise<{
@@ -153,14 +174,47 @@ export class ApiClient {
   }
 
   async search(query: string): Promise<SearchItem[]> {
-    const response = await this.request<{ sections: Record<string, SearchItem[]> }>(
-      `/v1/search?q=${encodeURIComponent(query)}&type=all`,
-    );
-    return flattenSearchSections(response.sections);
+    const response = await this.searchPage({ query });
+    return flattenSearchSections(response.sections ?? {});
   }
 
-  async discover(): Promise<{ trending: Array<{ id: string; query: string; subreddit: string }>; communities: Array<{ id: string; name: string; displayName: string; subscriberCount: number }> }> {
-    return this.request("/v1/search/discover");
+  async searchPage(input: {
+    query: string;
+    type?: SearchType;
+    sort?: SearchSort;
+    time?: SearchTime;
+    safe?: boolean;
+    subreddit?: string;
+    cursor?: string | null;
+  }): Promise<SearchPageResponse> {
+    const parameters = new URLSearchParams({
+      q: input.query,
+      type: input.type ?? "all",
+      sort: input.sort ?? "relevance",
+      time: input.time ?? "all",
+      safe: String(input.safe ?? true),
+      limit: "20",
+    });
+    if (input.subreddit) parameters.set("subreddit", input.subreddit);
+    if (input.cursor) parameters.set("cursor", input.cursor);
+    return this.request<SearchPageResponse>(`/v1/search?${parameters.toString()}`);
+  }
+
+  async typeahead(query: string): Promise<SearchTypeahead> {
+    return this.request<SearchTypeahead>(`/v1/search/typeahead?q=${encodeURIComponent(query)}&limit=8`);
+  }
+
+  async discover(): Promise<SearchDiscover> {
+    return this.request<SearchDiscover>("/v1/search/discover");
+  }
+
+  async updateProfile(input: { displayName?: string; bio?: string; avatarMediaId?: string | null }): Promise<User> {
+    const user = (await this.request<{ user: User }>("/v1/me", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    })).user;
+    if (this.auth) await this.setAuth({ ...this.auth, user });
+    return user;
   }
 
   async mutate<T>(entry: Omit<OutboxEntry, "id" | "accountId" | "createdAt" | "attempts">): Promise<T | null> {

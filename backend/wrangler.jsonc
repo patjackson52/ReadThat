@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "readthat-api",
+  "name": "sdui-reddit-api",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-28",
   "compatibility_flags": ["nodejs_compat"],
@@ -11,10 +11,10 @@
   },
   "vars": {
     "ENVIRONMENT": "production",
-    "ALLOWED_ORIGINS": "http://localhost:8080,http://10.0.2.2:8787",
+    "ALLOWED_ORIGINS": "https://sdui-reddit-api.patjackson52.workers.dev,http://localhost:8080,http://127.0.0.1:8080,http://10.0.2.2:8787",
     "VIDEO_TRANSCODING": "stream",
     "IMAGE_DELIVERY": "images",
-    "IMAGES_ACCOUNT_HASH": "REPLACE_WITH_CLOUDFLARE_IMAGES_ACCOUNT_HASH"
+    "IMAGES_ACCOUNT_HASH": "yT3z-3N1UU2O7d5VHFxwIA"
   },
   "images": {
     "binding": "IMAGES"
@@ -25,25 +25,25 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "readthat",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_name": "sdui-reddit",
+      "database_id": "e1519498-ca57-40d7-a3dc-b5850517ae00",
       "migrations_dir": "migrations"
     }
   ],
   "r2_buckets": [
     {
       "binding": "MEDIA",
-      "bucket_name": "readthat-media"
+      "bucket_name": "sdui-reddit-media"
     }
   ],
   "analytics_engine_datasets": [
     {
       "binding": "PERFORMANCE",
-      "dataset": "readthat_performance"
+      "dataset": "sdui_reddit_performance"
     },
     {
       "binding": "PRODUCT_ANALYTICS",
-      "dataset": "readthat_product_analytics"
+      "dataset": "sdui_reddit_product_analytics"
     }
   ],
   "durable_objects": {

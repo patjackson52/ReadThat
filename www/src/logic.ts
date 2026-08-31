@@ -40,8 +40,8 @@ export function postGroup(post: Post): FeedGroup {
 export function updateNode(nodes: TreeNode[], id: string, update: (node: CommentNode) => CommentNode): TreeNode[] {
   return nodes.map((node) => {
     if (node.type !== "comment") return node;
-    if (node.id === id) return update(node);
-    return { ...node, children: updateNode(node.children, id, update) };
+    if (node.id === id) return withAccurateDescendantCount(update(node));
+    return withAccurateDescendantCount({ ...node, children: updateNode(node.children, id, update) });
   });
 }
 
@@ -49,8 +49,22 @@ export function replaceCursor(nodes: TreeNode[], cursorId: string, replacement: 
   return nodes.flatMap((node) => {
     if (node.id === cursorId) return replacement;
     if (node.type !== "comment") return [node];
-    return [{ ...node, children: replaceCursor(node.children, cursorId, replacement) }];
+    return [withAccurateDescendantCount({
+      ...node,
+      children: replaceCursor(node.children, cursorId, replacement),
+    })];
   });
+}
+
+function withAccurateDescendantCount(node: CommentNode): CommentNode {
+  const descendantCount = node.children.reduce((total, child) =>
+    total + (child.type === "comment" ? 1 + child.descendantCount : 0), 0);
+  return descendantCount === node.descendantCount ? node : { ...node, descendantCount };
+}
+
+export function collapsedCommentCountLabel(count: number): string | null {
+  if (count === 1) return "Show 1 hidden reply";
+  return count > 1 ? `Show ${count.toLocaleString()} hidden replies` : null;
 }
 
 export function loadedTree(

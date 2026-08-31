@@ -372,8 +372,12 @@ const postIds = seeded.map((item) => item.postId);
 const verification = runSql(`
   SELECT p.id, p.title, p.comment_count,
     COUNT(c.id) AS stored_comments,
-    SUM(CASE WHEN c.parent_id IS NULL THEN 1 ELSE 0 END) AS root_comments,
-    MAX(c.depth) AS max_depth,
+    SUM(CASE WHEN c.client_mutation_id LIKE ${sqlString(`${VERSION_PREFIX}:%`)} THEN 1 ELSE 0 END)
+      AS fixture_comments,
+    SUM(CASE WHEN c.client_mutation_id LIKE ${sqlString(`${VERSION_PREFIX}:%`)}
+      AND c.parent_id IS NULL THEN 1 ELSE 0 END) AS fixture_root_comments,
+    MAX(CASE WHEN c.client_mutation_id LIKE ${sqlString(`${VERSION_PREFIX}:%`)}
+      THEN c.depth ELSE NULL END) AS fixture_max_depth,
     SUM(length(c.body)) AS comment_body_bytes
   FROM posts p
   LEFT JOIN comments c ON c.post_id = p.id AND c.deleted_at IS NULL
@@ -383,12 +387,13 @@ const verification = runSql(`
 const byPostId = new Map(verification.map((row) => [row.id, row]));
 for (const item of seeded) {
   const row = byPostId.get(item.postId);
-  if (!row || Number(row.stored_comments) !== item.comments.length || Number(row.comment_count) !== item.comments.length) {
+  if (!row || Number(row.fixture_comments) !== item.comments.length
+    || Number(row.comment_count) !== Number(row.stored_comments)) {
     throw new Error(`${item.fixture.fixtureId}: D1 comment count mismatch: ${JSON.stringify(row)}`);
   }
   const expectedRoots = item.comments.filter((comment) => comment.parentKey === null).length;
   const expectedMaxDepth = Math.max(...item.comments.map((comment) => comment.depth));
-  if (Number(row.root_comments) !== expectedRoots || Number(row.max_depth) !== expectedMaxDepth) {
+  if (Number(row.fixture_root_comments) !== expectedRoots || Number(row.fixture_max_depth) !== expectedMaxDepth) {
     throw new Error(`${item.fixture.fixtureId}: D1 shape mismatch: ${JSON.stringify(row)}`);
   }
 }
@@ -396,7 +401,8 @@ for (const item of seeded) {
 const measured = [];
 for (const item of seeded) {
   const post = await fetchMeasured(`/v1/posts/${item.postId}`);
-  if (post.payload.post?.body !== item.fixture.body || post.payload.post?.commentCount !== item.comments.length) {
+  if (post.payload.post?.body !== item.fixture.body
+    || post.payload.post?.commentCount < item.comments.length) {
     throw new Error(`${item.fixture.fixtureId}: live post verification failed`);
   }
   const initial = await fetchMeasured(`/v1/posts/${item.postId}/comments?count=8&depth=10`);
@@ -414,7 +420,9 @@ for (const item of seeded) {
     postId: item.postId,
     postUrl: `${baseUrl}/post/${item.postId}`,
     postWords: words(item.fixture.body),
-    storedComments: item.comments.length,
+    fixtureComments: item.comments.length,
+    liveComments: post.payload.post.commentCount,
+    organicComments: post.payload.post.commentCount - item.comments.length,
     rootComments: item.comments.filter((comment) => comment.parentKey === null).length,
     maxStoredDepth: Math.max(...item.comments.map((comment) => comment.depth)),
     commentBodyUtf8Bytes: Buffer.byteLength(item.comments.map((comment) => comment.body).join(""), "utf8"),
@@ -451,7 +459,9 @@ console.log(JSON.stringify({
   },
   totals: {
     posts: measured.length,
-    comments: measured.reduce((sum, item) => sum + item.storedComments, 0),
+    fixtureComments: measured.reduce((sum, item) => sum + item.fixtureComments, 0),
+    liveComments: measured.reduce((sum, item) => sum + item.liveComments, 0),
+    organicComments: measured.reduce((sum, item) => sum + item.organicComments, 0),
     commentBodyUtf8Bytes: measured.reduce((sum, item) => sum + item.commentBodyUtf8Bytes, 0),
   },
   posts: measured,

@@ -1,16 +1,4 @@
-import type { PostRoom } from "./post-room";
-import type { RateLimiter } from "./rate-limiter";
-
 export type AppEnv = Env & {
-  ANALYTICS_ID_PEPPER: string;
-  POST_ROOMS: DurableObjectNamespace<PostRoom>;
-  RATE_LIMITERS: DurableObjectNamespace<RateLimiter>;
-  STREAM: StreamBinding;
-  IMAGES: ImagesBinding;
-  VIDEO_TRANSCODING: "stream" | "passthrough";
-  IMAGE_DELIVERY: "images" | "passthrough";
-  IMAGES_ACCOUNT_HASH: string;
-  IMAGES_SIGNING_KEY: string;
   /** Present after the account webhook is configured. Polling remains a fallback. */
   STREAM_WEBHOOK_SECRET?: string;
 };

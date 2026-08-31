@@ -1,0 +1,16 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "2XAXFD3872.dev.readthat.ios",
+        "components": [
+          {
+            "/": "/post/*",
+            "comment": "Open ReadThat post and comment permalinks"
+          }
+        ]
+      }
+    ]
+  }
+}

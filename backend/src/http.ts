@@ -130,17 +130,27 @@ export function clientIp(request: Request): string {
   return request.headers.get("cf-connecting-ip") ?? "local-development";
 }
 
-export function applyCors(request: Request, response: Response, allowedOrigins: string): Response {
-  const origin = request.headers.get("origin");
-  if (!origin) return response;
-  const allowed = new Set(allowedOrigins.split(",").map((item) => item.trim()).filter(Boolean));
-  if (!allowed.has(origin)) return response;
+function appendVary(headers: Headers, value: string): void {
+  const values = (headers.get("vary") ?? "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (!values.some((item) => item.toLocaleLowerCase() === value.toLocaleLowerCase())) {
+    values.push(value);
+  }
+  headers.set("vary", values.join(", "));
+}
 
+export function applyCors(request: Request, response: Response, allowedOrigins: string): Response {
   const headers = new Headers(response.headers);
-  headers.set("access-control-allow-origin", origin);
-  headers.set("access-control-allow-credentials", "true");
-  headers.set("access-control-expose-headers", "etag,x-d1-bookmark,x-request-id,retry-after,server-timing");
-  headers.append("vary", "Origin");
+  appendVary(headers, "Origin");
+  const origin = request.headers.get("origin");
+  const allowed = new Set(allowedOrigins.split(",").map((item) => item.trim()).filter(Boolean));
+  if (origin && allowed.has(origin)) {
+    headers.set("access-control-allow-origin", origin);
+    headers.set("access-control-allow-credentials", "true");
+    headers.set("access-control-expose-headers", "etag,x-d1-bookmark,x-request-id,retry-after,server-timing");
+  }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
-  <title id="title">ReadThat</title>
+  <title id="title">Read That</title>
   <rect width="512" height="512" fill="#f04424"/>
   <path d="M112 139c54 0 102 12 144 55 42-43 90-55 144-55 13 0 23 10 23 23v172c0 13-10 23-23 23-55 0-99 10-144 49-45-39-89-49-144-49-13 0-23-10-23-23V162c0-13 10-23 23-23Z" fill="#fff8f0"/>
   <path d="M256 194v177" fill="none" stroke="#17212b" stroke-linecap="round" stroke-width="12"/>

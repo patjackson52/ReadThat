@@ -142,6 +142,44 @@ async function uploadGalleryImage(testClient: TestClient, label: string, width: 
 }
 
 describe("ReadThat backend API", () => {
+  it("handles production CORS preflights and varies every API response by origin", async () => {
+    const productionOrigin = "https://sdui-reddit-api.patjackson52.workers.dev";
+    const preflight = await exports.default.fetch(new Request("http://example.test/v1/feed", {
+      method: "OPTIONS",
+      headers: {
+        origin: productionOrigin,
+        "access-control-request-method": "GET",
+        "access-control-request-headers": "authorization,x-d1-bookmark",
+      },
+    }));
+    expect(preflight.status).toBe(204);
+    expect(preflight.headers.get("access-control-allow-origin")).toBe(productionOrigin);
+    expect(preflight.headers.get("access-control-allow-methods")).toContain("PATCH");
+    expect(preflight.headers.get("access-control-allow-headers")).toContain("x-d1-bookmark");
+    expect(preflight.headers.get("vary")).toBe("Origin");
+
+    const allowed = await exports.default.fetch(new Request("http://example.test/health", {
+      headers: { origin: productionOrigin },
+    }));
+    expect(allowed.status).toBe(200);
+    expect(allowed.headers.get("access-control-allow-origin")).toBe(productionOrigin);
+    expect(allowed.headers.get("access-control-expose-headers")).toContain("x-request-id");
+    expect(allowed.headers.get("vary")).toBe("Origin");
+
+    const disallowed = await exports.default.fetch(new Request("http://example.test/v1/feed", {
+      method: "OPTIONS",
+      headers: { origin: "https://not-readthat.example" },
+    }));
+    expect(disallowed.status).toBe(403);
+    expect(disallowed.headers.get("access-control-allow-origin")).toBeNull();
+    expect(disallowed.headers.get("vary")).toBe("Origin");
+
+    const sameOrigin = await exports.default.fetch(new Request("http://example.test/health"));
+    expect(sameOrigin.status).toBe(200);
+    expect(sameOrigin.headers.get("access-control-allow-origin")).toBeNull();
+    expect(sameOrigin.headers.get("vary")).toBe("Origin");
+  });
+
   it("registers, authenticates, rotates refresh tokens, and revokes logout", async () => {
     const api = client();
     const session = await register(api, "auth_user");
@@ -297,7 +335,7 @@ describe("ReadThat backend API", () => {
     expect(rejected.body.error).toMatchObject({ code: "invalid_post_flair" });
   });
 
-  it("publishes only owned Cloudflare Images media as a removable profile avatar", async () => {
+  it("publishes owned Images media and serves trusted R2 fixture avatars", async () => {
     const owner = client();
     await register(owner, "avatar_owner");
     const created = await owner.request("/v1/media/uploads", json({
@@ -356,6 +394,16 @@ describe("ReadThat backend API", () => {
       /^https:\/\/imagedelivery\.net\/test-account-hash\/avatar-image-1\/feed\?exp=\d+&sig=[a-f0-9]+$/u,
     );
     expect(avatar.headers.get("cache-control")).toContain("stale-while-revalidate");
+
+    await env.DB.prepare(
+      `UPDATE media SET delivery_provider = 'r2', image_uid = NULL, image_status = 'not_applicable'
+       WHERE id = ?`,
+    ).bind(upload.id).run();
+    const fixtureAvatar = await exports.default.fetch(new Request(user.avatarUrl, { redirect: "manual" }));
+    expect(fixtureAvatar.status).toBe(302);
+    expect(fixtureAvatar.headers.get("location")).toMatch(
+      new RegExp(`^http://example\\.test/v1/media/${upload.id}\\?expires=\\d+&signature=[A-Za-z0-9_-]+$`, "u"),
+    );
 
     const removed = await owner.request("/v1/me", json({ avatarMediaId: null }, { method: "PATCH" }));
     expect(removed.response.status).toBe(200);
@@ -547,16 +595,19 @@ describe("ReadThat backend API", () => {
       displayName: "Comment Display Name",
       avatarUrl: "https://cdn.example/commenter.jpg",
       isEdited: true,
+      descendantCount: 7,
     });
 
     const smallAgain = await api.request(`/v1/posts/${post.id}/comments?count=8&depth=10`);
     expect(smallAgain.response.status).toBe(200);
     expect(smallAgain.body.cacheStatus).toBe("hit");
+    expect((smallAgain.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(7);
 
     const full = await api.request(`/v1/posts/${post.id}/comments?count=200&depth=10`);
     expect(full.response.status).toBe(200);
     expect(full.body.requestedCount).toBe(200);
     expect(JSON.stringify(full.body)).toContain("load_more");
+    expect((full.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(10);
   });
 
   it("serializes identical comment retries and rejects mutation UUID reuse", async () => {
@@ -672,11 +723,115 @@ describe("ReadThat backend API", () => {
     expect(replay.body.error).toMatchObject({ code: "invalid_cursor" });
   });
 
-  it("interleaves stable promoted ids only into the first home page", async () => {
+  it("pins the ReadThat context post first for every home and community audience without cursor duplicates", async () => {
+    const featuredId = "610466c0-544f-518b-b536-4973bcfe8af9";
+    const featuredTitle = "ReadThat: a Reddit clone eng playground";
+    const owner = client();
+    await register(owner, "featured_context_owner");
+    const readthateng = await createSubreddit(owner, "readthateng");
+    await createSubreddit(owner, "contextother");
+    const author = await env.DB.prepare(
+      "SELECT id FROM users WHERE username = ?",
+    ).bind("featured_context_owner").first<{ id: string }>();
+    expect(author).not.toBeNull();
+    if (!author) throw new Error("Featured-context test author is missing");
+    const now = Date.now() - 60_000;
+    await env.DB.prepare(
+      `INSERT INTO posts (
+         id, subreddit_id, author_id, kind, title, body, client_mutation_id,
+         created_at, updated_at
+       ) VALUES (?, ?, ?, 'text', ?, ?, ?, ?, ?)`,
+    ).bind(
+      featuredId,
+      readthateng.id,
+      author.id,
+      featuredTitle,
+      "Context for what ReadThat is and why it exists.",
+      "featured-context-post",
+      now,
+      now,
+    ).run();
+    for (let index = 0; index < 4; index += 1) {
+      await createTextPost(owner, "contextother", `context-other-${index}`);
+    }
+
+    const assertFeaturedFirst = (body: ApiResponse) => {
+      const groups = body.groups as Array<{
+        groupId: string;
+        cells: Array<{ type: string; text?: string; pinned?: boolean }>;
+      }>;
+      expect(groups[0]?.groupId).toBe(featuredId);
+      expect(groups.filter((group) => group.groupId === featuredId)).toHaveLength(1);
+      expect(groups[0]?.cells.find((cell) => cell.type === "title")?.text).toBe(featuredTitle);
+      expect(groups[0]?.cells.find((cell) => cell.type === "metadata")?.pinned).toBe(true);
+      return groups;
+    };
+
+    const anonymous = client();
+    const anonymousHome = await anonymous.request("/v1/feed?limit=2");
+    expect(anonymousHome.response.status).toBe(200);
+    assertFeaturedFirst(anonymousHome.body);
+
+    const signedInHome = await owner.request("/v1/feed?limit=2");
+    expect(signedInHome.response.status).toBe(200);
+    assertFeaturedFirst(signedInHome.body);
+
+    const community = await anonymous.request("/v1/feed?limit=2&subreddit=contextother");
+    expect(community.response.status).toBe(200);
+    expect(community.body.feedId).toBe("subreddit:contextother");
+    expect(assertFeaturedFirst(community.body)).toHaveLength(3);
+
+    const readthatengFeed = await anonymous.request("/v1/feed?limit=2&subreddit=readthateng");
+    expect(readthatengFeed.response.status).toBe(200);
+    expect(assertFeaturedFirst(readthatengFeed.body)).toHaveLength(1);
+
+    const cursor = community.body.nextCursor as string;
+    expect(cursor).toBeTypeOf("string");
+    const nextPage = await anonymous.request(
+      `/v1/feed?limit=2&subreddit=contextother&cursor=${encodeURIComponent(cursor)}`,
+    );
+    expect(nextPage.response.status).toBe(200);
+    expect((nextPage.body.groups as Array<{ groupId: string }>).some(
+      (group) => group.groupId === featuredId,
+    )).toBe(false);
+    await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(featuredId).run();
+  });
+
+  it("serves only allowlisted promoted assets with immutable caching", async () => {
+    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xd9]);
+    await env.MEDIA.put(
+      "promoted/patrick-client-platform/v1/patrick-headshot-1.jpeg",
+      bytes,
+      { httpMetadata: { contentType: "image/jpeg" } },
+    );
+
+    const response = await exports.default.fetch(new Request(
+      "http://example.test/v1/promoted/assets/patrick-headshot-1",
+    ));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("image/jpeg");
+    expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
+
+    const head = await exports.default.fetch(new Request(
+      "http://example.test/v1/promoted/assets/patrick-headshot-1",
+      { method: "HEAD" },
+    ));
+    expect(head.status).toBe(200);
+    expect(head.headers.get("content-length")).toBe(String(bytes.byteLength));
+
+    const missing = await exports.default.fetch(new Request(
+      "http://example.test/v1/promoted/assets/not-allowlisted",
+    ));
+    expect(missing.status).toBe(404);
+  });
+
+  it("interleaves stable promoted ids across home cursor pages at three-to-four-post gaps", async () => {
     const api = client();
     await register(api, "promoted_feed_user");
     await createSubreddit(api, "promotedfeed");
-    for (let index = 0; index < 12; index += 1) {
+    for (let index = 0; index < 28; index += 1) {
       await createTextPost(api, "promotedfeed", `promoted-feed-${index.toString().padStart(2, "0")}`);
     }
 
@@ -689,15 +844,54 @@ describe("ReadThat backend API", () => {
     expect(home.response.status).toBe(200);
     const groups = home.body.groups as Array<{
       groupId: string;
-      cells: Array<{ type: string; adId?: string; items?: unknown[] }>;
+      cells: Array<{
+        type: string;
+        adId?: string;
+        author?: string;
+        avatarUrl?: string;
+        label?: string;
+        text?: string;
+        disclosureLabel?: string;
+        destinationUrl?: string;
+        items?: Array<{ imageUrl?: string; aspectRatio?: number; altText?: string }>;
+        posts?: Array<{ postId: string; title: string; subreddit: string }>;
+      }>;
     }>;
-    const promoted = groups.filter((group) => group.groupId.startsWith("promoted:"));
+    const secondPage = await api.request(
+      `/v1/feed?limit=9&includePromoted=true&cursor=${encodeURIComponent(home.body.nextCursor as string)}`,
+    );
+    expect(secondPage.response.status).toBe(200);
+    const secondGroups = secondPage.body.groups as typeof groups;
+    const thirdPage = await api.request(
+      `/v1/feed?limit=9&includePromoted=true&cursor=${encodeURIComponent(secondPage.body.nextCursor as string)}`,
+    );
+    expect(thirdPage.response.status).toBe(200);
+    const thirdGroups = thirdPage.body.groups as typeof groups;
+    const allGroups = [...groups, ...secondGroups, ...thirdGroups];
+    const promoted = allGroups.filter((group) => group.groupId.startsWith("promoted:"));
     expect(promoted.map((group) => group.groupId)).toEqual([
-      "promoted:patrick-platform-01",
-      "promoted:patrick-systems-02",
+      "promoted:patrick-client-platform-leverage-06",
+      "promoted:patrick-rick-verdict-01",
+      "promoted:patrick-client-media-resilience-07",
+      "promoted:patrick-evil-morty-systems-02",
+      "promoted:patrick-dr-wong-observability-03",
+      "promoted:patrick-space-beth-resilience-04",
+      "promoted:patrick-unity-platform-05",
     ]);
-    expect(groups[3]?.groupId).toBe("promoted:patrick-platform-01");
-    expect(groups[9]?.groupId).toBe("promoted:patrick-systems-02");
+    expect(groups[3]?.groupId).toBe("promoted:patrick-client-platform-leverage-06");
+    expect(groups[8]?.groupId).toBe("promoted:patrick-rick-verdict-01");
+    expect(secondGroups[1]?.groupId).toBe("promoted:patrick-client-media-resilience-07");
+    let organicSinceLastAd = 0;
+    const organicGaps: number[] = [];
+    for (const group of allGroups) {
+      if (group.groupId.startsWith("promoted:")) {
+        organicGaps.push(organicSinceLastAd);
+        organicSinceLastAd = 0;
+      } else {
+        organicSinceLastAd += 1;
+      }
+    }
+    expect(organicGaps).toEqual([3, 4, 3, 4, 3, 4, 3]);
     expect(promoted[0]?.cells.map((cell) => cell.type)).toEqual([
       "ad_header",
       "ad_title",
@@ -706,24 +900,84 @@ describe("ReadThat backend API", () => {
       "ad_related_posts",
       "ad_actionbar",
     ]);
-    expect(promoted[0]?.cells.find((cell) => cell.type === "ad_header")).toMatchObject({
-      author: "patrickjackson",
-      label: "Ad",
-    });
-    expect(promoted[1]?.cells.find((cell) => cell.type === "ad_media")?.items).toHaveLength(3);
+    expect(promoted.map((group) => group.cells.find((cell) => cell.type === "ad_header")?.author)).toEqual([
+      "patrickjackson",
+      "rick_sanchez",
+      "patrickjackson",
+      "evil_morty",
+      "dr_wong",
+      "space_beth",
+      "unity_hivemind",
+    ]);
+    expect(promoted.map((group) => ({
+      title: group.cells.find((cell) => cell.type === "ad_title")?.text,
+      destinationUrl: group.cells.find((cell) => cell.type === "ad_media")?.destinationUrl,
+    }))).toEqual([{
+      title: "Client Platform engineering can use breadth and depth of experience - Patrick Jackson has got you covered.",
+      destinationUrl: "https://patrickjackson.dev/resume",
+    }, {
+      title: "Reddit, hire Patrick Jackson before another app's platform team picks him.",
+      destinationUrl: "https://patrickjackson.dev/case-studies/readthat/comments/",
+    }, {
+      title: "I build client platforms that help product teams ship faster without trading performance or reliability.",
+      destinationUrl: "https://patrickjackson.dev/case-studies/readthat/media-feed/",
+    }, {
+      title: "Reddit needs a client platform that creates leverage—not another miniature Citadel.",
+      destinationUrl: "https://patrickjackson.dev/resume",
+    }, {
+      title: "My profession advice: Patrick Jackson sees the big picture and how to make it observable.",
+      destinationUrl: "https://patrickjackson.dev/case-studies/readthat/observability/",
+    }, {
+      title: "When the network vanishes and launch pressure spikes, Patrick's platform keeps the mission moving.",
+      destinationUrl: "https://patrickjackson.dev/case-studies/readthat/data-layer/",
+    }, {
+      title: "One client platform, many product teams: Patrick Jackson turns coordination into capability.",
+      destinationUrl: "https://patrickjackson.dev/case-studies/readthat/kmp/",
+    }]);
+    const relatedPostIds = new Set<string>();
+    for (const group of promoted) {
+      const header = group.cells.find((cell) => cell.type === "ad_header");
+      const media = group.cells.find((cell) => cell.type === "ad_media");
+      const related = group.cells.find((cell) => cell.type === "ad_related_posts");
+      expect(header?.avatarUrl).toMatch(
+        /^http:\/\/example\.test\/v1\/(?:users\/[a-z0-9_]+\/avatar|promoted\/assets\/patrick-headshot-[12])$/u,
+      );
+      expect(media?.items).toHaveLength(1);
+      expect(media?.items?.[0]?.imageUrl).toMatch(
+        /^http:\/\/example\.test\/v1\/(?:users\/[a-z0-9_]+\/avatar|promoted\/assets\/patrick-headshot-[12])$/u,
+      );
+      expect(related?.posts).toHaveLength(3);
+      expect(related?.posts?.every((post) => (
+        /^[a-f0-9-]{36}$/u.test(post.postId) && post.subreddit === "readthateng"
+      ))).toBe(true);
+      related?.posts?.forEach((post) => relatedPostIds.add(post.postId));
+    }
+    expect(relatedPostIds.size).toBe(11);
+    const headshotAds = [promoted[0], promoted[2]].filter((group) => group !== undefined);
+    expect(headshotAds.map((group) => (
+      group.cells.find((cell) => cell.type === "ad_summary")?.text
+    ))).toEqual([
+      "15yrs Android, 5 years at hyper scale (Meta), client platform and prod experience in multiple apps. Passion for building systems with teams.",
+      "PREQ, devX, observability, scalable & dev velocity are what client platform should support. Patrick Jackson knows how to do this.",
+    ]);
+    for (const group of headshotAds) {
+      const header = group.cells.find((cell) => cell.type === "ad_header");
+      const media = group.cells.find((cell) => cell.type === "ad_media");
+      const summary = group.cells.find((cell) => cell.type === "ad_summary");
+      expect(header?.label).toBe("Ad · portfolio demo");
+      expect(summary?.disclosureLabel).toBe("AI-written with Patrick's guidance");
+      expect(media?.items?.[0]?.aspectRatio).toBeCloseTo(896 / 1088);
+      expect(media?.items?.[0]?.altText).toContain("Patrick Jackson");
+    }
 
     const subreddit = await api.request("/v1/feed?limit=9&subreddit=promotedfeed");
     expect((subreddit.body.groups as Array<{ groupId: string }>).some(
       (group) => group.groupId.startsWith("promoted:"),
     )).toBe(false);
 
-    const nextCursor = home.body.nextCursor as string;
-    const nextPage = await api.request(
-      `/v1/feed?limit=9&includePromoted=true&cursor=${encodeURIComponent(nextCursor)}`,
-    );
-    expect((nextPage.body.groups as Array<{ groupId: string }>).some(
-      (group) => group.groupId.startsWith("promoted:"),
-    )).toBe(false);
+    expect([groups, secondGroups, thirdGroups].map((page) => (
+      page.filter((group) => group.groupId.startsWith("promoted:")).length
+    ))).toEqual([2, 3, 2]);
   });
 
   it("pages a typed media-only feed, puts the tapped anchor first, and binds its cursor", async () => {

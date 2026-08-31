@@ -1,0 +1,135 @@
+{
+  "verifiedAt": "2026-08-31T04:56:45.007Z",
+  "fixtureVersion": 1,
+  "apiBaseUrl": "https://sdui-reddit-api.patjackson52.workers.dev",
+  "worker": {
+    "name": "sdui-reddit-api",
+    "versionId": "562a17be-444a-4e0d-bf6f-daf72d22851c"
+  },
+  "cloudflare": {
+    "d1Database": "sdui-reddit",
+    "d1DatabaseId": "e1519498-ca57-40d7-a3dc-b5850517ae00",
+    "r2Bucket": "sdui-reddit-media",
+    "videoDelivery": "Cloudflare Stream"
+  },
+  "license": {
+    "name": "Pexels License",
+    "url": "https://www.pexels.com/license/",
+    "capturedAt": "2026-08-30"
+  },
+  "author": {
+    "id": "5b3e8280-458b-4dc8-b16d-f0e94c0ac80d",
+    "username": "parkour_replay_mtgrcs9g"
+  },
+  "community": {
+    "id": "ac028ff4-645d-43b4-9208-1edbaf4c94d4",
+    "name": "parkour_replay",
+    "url": "https://sdui-reddit-api.patjackson52.workers.dev/r/parkour_replay"
+  },
+  "feedVerification": {
+    "rankingFormula": "score * 1000000000 + created_at",
+    "scorePerPost": 1,
+    "anonymousHomeFeedLimit": 50,
+    "positions": [15, 19, 28, 39, 47],
+    "longestConsecutiveRun": 1
+  },
+  "verification": {
+    "posts": 5,
+    "readyStreamVideos": 5,
+    "adaptiveHlsRenditionsPerVideo": 5,
+    "workingPosters": 5,
+    "attributionRecords": 5
+  },
+  "videos": [
+    {
+      "pexelsId": 38209890,
+      "creator": "Marc Espejo",
+      "sourceUrl": "https://www.pexels.com/video/outdoor-parkour-in-urban-playground-setting-38209890/",
+      "title": "The sidewalk shipped a breaking change",
+      "publishedAt": "2026-08-30T04:38:35.000Z",
+      "score": 1,
+      "rankValue": 1789064715000,
+      "homeFeedPosition": 15,
+      "postId": "2fb92cb1-785e-433b-a33f-2019700197a6",
+      "postUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/2fb92cb1-785e-433b-a33f-2019700197a6",
+      "mediaId": "6b313177-8ed2-4be2-8f5e-f361e001c426",
+      "sourceBytes": 17986904,
+      "sha256": "54f60874ee43c5b25776d3b6410150d237d2e6c3846ce2a84bb97206d90d35f0",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/22459b86606b2e0a3d0ba31678bebfdd/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/22459b86606b2e0a3d0ba31678bebfdd/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/22459b86606b2e0a3d0ba31678bebfdd/thumbnails/thumbnail.jpg?time=2s&width=1080&height=608&fit=crop"
+    },
+    {
+      "pexelsId": 29499949,
+      "creator": "Habeeb Sujan",
+      "sourceUrl": "https://www.pexels.com/video/dynamic-parkour-in-outdoor-urban-setting-29499949/",
+      "title": "One obstacle course, zero loading states",
+      "publishedAt": "2026-08-30T04:25:00.000Z",
+      "score": 1,
+      "rankValue": 1789063900000,
+      "homeFeedPosition": 19,
+      "postId": "d664f9c8-86c8-417e-a3d2-a2b135504744",
+      "postUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/d664f9c8-86c8-417e-a3d2-a2b135504744",
+      "mediaId": "504f8ca6-1bb2-4291-99d1-1a82c7027341",
+      "sourceBytes": 43839146,
+      "sha256": "7dc57f20ad99b222d71c721bffe69df7e15748c3fb6a2c16737b95506178a192",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/218ec61fb0cbe4fb295e88be3e0fa117/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/218ec61fb0cbe4fb295e88be3e0fa117/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/218ec61fb0cbe4fb295e88be3e0fa117/thumbnails/thumbnail.jpg?time=5s&width=608&height=1080&fit=crop"
+    },
+    {
+      "pexelsId": 6004316,
+      "creator": "Mary Taylor",
+      "sourceUrl": "https://www.pexels.com/video/man-doing-parkour-at-the-park-6004316/",
+      "title": "The route said “unsupported transition.” He disagreed.",
+      "publishedAt": "2026-08-28T22:03:50.000Z",
+      "score": 1,
+      "rankValue": 1788954630000,
+      "homeFeedPosition": 28,
+      "postId": "c9756cf8-b04f-42f9-8255-a959e0daf265",
+      "postUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/c9756cf8-b04f-42f9-8255-a959e0daf265",
+      "mediaId": "d8c1400c-0319-4252-a099-fd25cb373fd1",
+      "sourceBytes": 30046427,
+      "sha256": "fd9846f6335bf0477200d7108b4d23498968638e08b7785984c651725105aba6",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/554eb0cce61953d0e9ab8eede47094cd/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/554eb0cce61953d0e9ab8eede47094cd/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/554eb0cce61953d0e9ab8eede47094cd/thumbnails/thumbnail.jpg?time=2s&width=1080&height=608&fit=crop"
+    },
+    {
+      "pexelsId": 32367925,
+      "creator": "George Frewat",
+      "sourceUrl": "https://www.pexels.com/video/dynamic-parkour-athlete-flips-in-urban-park-32367925/",
+      "title": "The rollback plan was apparently a backflip",
+      "publishedAt": "2026-08-28T21:27:30.000Z",
+      "score": 1,
+      "rankValue": 1788952450000,
+      "homeFeedPosition": 39,
+      "postId": "fa7b9960-ddc5-4ffc-baa0-20d961a449af",
+      "postUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/fa7b9960-ddc5-4ffc-baa0-20d961a449af",
+      "mediaId": "33395cbe-c37e-4717-a36f-1b044bd5996b",
+      "sourceBytes": 16467069,
+      "sha256": "23d1884dd981aaa002b27901615c333022ad61ba7aa4117086a046adb7555fca",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/fa554c9ff7536c0646d1793a78ff57e7/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/fa554c9ff7536c0646d1793a78ff57e7/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/fa554c9ff7536c0646d1793a78ff57e7/thumbnails/thumbnail.jpg?time=1s&width=1080&height=608&fit=crop"
+    },
+    {
+      "pexelsId": 6470848,
+      "creator": "Marc Espejo",
+      "sourceUrl": "https://www.pexels.com/video/man-practicing-parkour-6470848/",
+      "title": "He found the happy path and vaulted over it",
+      "publishedAt": "2026-08-28T21:14:55.000Z",
+      "score": 1,
+      "rankValue": 1788951695000,
+      "homeFeedPosition": 47,
+      "postId": "6842efca-50f3-48fb-9210-a591897234c7",
+      "postUrl": "https://sdui-reddit-api.patjackson52.workers.dev/post/6842efca-50f3-48fb-9210-a591897234c7",
+      "mediaId": "dfde4561-d8dd-4247-91d8-c3ef777b5035",
+      "sourceBytes": 19980333,
+      "sha256": "61590d58811c8892e1e9856a451d52874f5a2e8a5c7cd4d001782554ae214cc5",
+      "hlsUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/745ddbc1fc490c66c7866e2b315f95c4/manifest/video.m3u8",
+      "dashUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/745ddbc1fc490c66c7866e2b315f95c4/manifest/video.mpd",
+      "posterUrl": "https://customer-lmyzrnktg8ca0fds.cloudflarestream.com/745ddbc1fc490c66c7866e2b315f95c4/thumbnails/thumbnail.jpg?time=2s&width=1080&height=608&fit=crop"
+    }
+  ]
+}

@@ -1,0 +1,117 @@
+{
+  "collection": {
+    "fixtureVersion": 1,
+    "feedBalanceRevision": 1,
+    "source": "https://patrickjackson.dev/case-studies/readthat/",
+    "database": "sdui-reddit",
+    "deployedApi": "https://sdui-reddit-api.patjackson52.workers.dev",
+    "community": "readthateng",
+    "author": "patrickjackson",
+    "createdAt": "2026-08-06T16:00:00.000Z"
+  },
+  "community": {
+    "name": "readthateng",
+    "displayName": "ReadThat Engineering",
+    "description": "Engineering, architecture, tradeoffs, solutions, and open problems from building ReadThat across mobile, web, and the edge.",
+    "accessType": "public"
+  },
+  "posts": [
+    {
+      "slug": "overview",
+      "title": "ReadThat: a Reddit clone eng playground",
+      "publishedAt": "2026-08-30T04:38:40.000Z",
+      "body": "Hi everyone! ReadThat is my playground app for ramping up on Reddit's problem space. It's a functioning clone that includes a feed, MediaFeed (photos and video), post details, comments, and fake ads. It has been an interesting system-design exercise. I've applied information from public Reddit engineering posts, including server-driven UI, 8/200 comment loading, and HTTP/3.\n- Jetpack Compose UI\n- Offline-first design with prefetching and two-tier caching (L1 memory, L2 disk)\n- Room DB for persistence\n- Streaming video from Cloudflare\n- KMP for shared code with iOS\n- A web frontend (not shared code)\nAdmittedly, this was mostly AI-coded using Codex. I provided the agents with a detailed high-level system design plus functional and non-functional requirements for the client and backend. Once the overall design and specification were in place, multiple agents implemented it. The final output needed some tweaking, particularly the comments UI and animations. They could still use some improvement.\nIn this community, there are several posts about aspects of the project, with links to my blog. Much of the content is AI-generated with my guidance. Normally, I would be more selective and hands-on when sharing technical posts, but I wanted to get something up quickly to share. I may revisit them.\nThe full case study and APK link are on my blog: [ReadThat case study](https://patrickjackson.dev/case-studies/readthat/)\nFeel free to install it, create an account, and play around :)\nBest,\nPatrick Jackson",
+      "url": "https://patrickjackson.dev/case-studies/readthat/"
+    },
+    {
+      "slug": "client-architecture",
+      "title": "Client architecture: durable local state first",
+      "publishedAt": "2026-08-28T22:04:30.000Z",
+      "problem": "Lifecycle-bound fetching and feature-owned copies of state fail under rotation, process death, offline use, and concurrent pagers. The UI needs one durable answer even while the network is changing it.",
+      "tradeoff": "Room-first state, outboxes, workers, and strict module boundaries cost more schema and orchestration than rendering network DTOs directly. In exchange, recovery becomes deterministic and every surface observes the same mutation.",
+      "solution": "Vertical feature slices use MVVM and unidirectional data flow; repositories alone know the network exists; Room emits authoritative state; idempotent WorkManager jobs drain durable intent; and only contracts and pure logic cross the KMP boundary.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/client-architecture/"
+    },
+    {
+      "slug": "sdui-feed",
+      "title": "SDUI feed: where server-driven UI helps—and where it stops",
+      "publishedAt": "2026-08-28T21:47:30.000Z",
+      "problem": "A fat polymorphic Post model couples feed composition to client releases, ships detail-only data, and makes every client recreate the server's presentation decisions.",
+      "tradeoff": "Server-driven cells reduce payload and time-to-interactive while enabling out-of-band composition changes, but weaken compile-time guarantees and complicate local interaction, caching, and unsupported-cell behavior. It is a feed tool, not a universal UI architecture.",
+      "solution": "The feed wire format sends ordered groups of small versioned cells with stable compound keys. A converter registry flattens them for rendering, unknown cells emit telemetry and fail safely, and post detail remains typed and domain-driven.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/sdui-feed/"
+    },
+    {
+      "slug": "media-feed",
+      "title": "Media feed: continuity with one player and one transport",
+      "publishedAt": "2026-08-28T21:31:30.000Z",
+      "problem": "Opening media from a ranked feed must preserve the exact generation and anchor instead of silently reranking, while fast swipes must not create a decoder pool or repeat DNS, TLS, and fetch work.",
+      "tradeoff": "A process-wide player and explicitly bounded preload tiers require centralized ownership and careful memory budgets. That coordination is preferable to codec-exhaustion crashes, duplicate connections, and a spinner on every swipe.",
+      "solution": "MediaFeed persists snapshot-scoped membership in Room, continues with the originating feed cursor, moves one ExoPlayer between lightweight views, warms nearby samples under a fixed budget, and shares one transport and stable cache identity across API, images, and video.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/media-feed/"
+    },
+    {
+      "slug": "comments",
+      "title": "Comments: load a ranked tree without moving the reader",
+      "publishedAt": "2026-08-28T21:18:20.000Z",
+      "problem": "Comment threads are unbounded trees, but phones can only download a useful ranked slice and UI toolkits want flat lists. Incremental expansion must splice anywhere without reordering content already under the reader's eyes.",
+      "tradeoff": "Building a best-first tree on the server adds CPU, cache invalidation, and fixed response sizes, but lets the server rank globally and lets clients render immediately without reconstructing ranking from an incomplete flat page.",
+      "solution": "ReadThat loads an 8-comment tree and then a 200-comment tree, preserves visible order with an anti-flicker merge, stores normalized nodes and cursors, and uses iterative flattening so even pathological depth cannot overflow the stack.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/comments/"
+    },
+    {
+      "slug": "data-layer",
+      "title": "Data layer: Room is truth; caches are accelerators",
+      "publishedAt": "2026-08-28T21:14:50.000Z",
+      "problem": "When network responses, memory objects, and feature caches can each claim to be current, screens disagree and optimistic writes disappear. Account switching also turns a missing scope key into a privacy bug.",
+      "tradeoff": "An account-scoped schema, transactional outboxes, and repository-owned writes add storage and migration work. The memory tier deliberately gives up authority so it can stay small, disposable, and safe to evict.",
+      "solution": "Every screen observes Room; order is separated from identity and viewer state; user intent is persisted beside its optimistic change; bounded L1 caches only remove hot-path work; and idempotency plus mutex-and-reread rules keep concurrent writers consistent.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/data-layer/"
+    },
+    {
+      "slug": "backend",
+      "title": "Backend: edge primitives with explicit consistency",
+      "publishedAt": "2026-08-28T20:39:10.000Z",
+      "problem": "A serverless backend still has to enforce auth and community ACLs, page a changing personalized feed, accept large media safely, and provide read-your-writes behavior over distributed SQLite.",
+      "tradeoff": "Managed edge services remove servers to patch and scale cheaply, but they make consistency, retries, cursor integrity, and service limits explicit design work rather than assumptions inherited from one monolithic database.",
+      "solution": "One Cloudflare Worker orchestrates D1, R2, Images, Stream, and Durable Objects; feeds use signed viewer-bound keyset cursors; creators upload media directly; D1 bookmarks preserve causal reads; and idempotency ledgers plus monotonic invalidations make retries safe.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/backend/"
+    },
+    {
+      "slug": "observability",
+      "title": "Observability: define metric boundaries before targets",
+      "publishedAt": "2026-08-28T20:13:20.000Z",
+      "problem": "A latency number without an exact timer boundary and segment is not comparable, and unconstrained telemetry can leak content or explode cardinality while still failing to explain user-visible regressions.",
+      "tradeoff": "A strict event allowlist, durable delivery, and percentile SLOs require more plumbing and constrain ad-hoc fields. That constraint buys privacy, stable dashboards, and release gates teams can actually trust.",
+      "solution": "A vendor-neutral KMP contract writes to a bounded queue and Room outbox; the Worker validates every metric and dimension before Analytics Engine ingest; and fixed TTI, mutation, frame, and media boundaries connect diagnostic signals to engagement outcomes.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/observability/"
+    },
+    {
+      "slug": "international",
+      "title": "International strategy: performance and data budgets are growth features",
+      "publishedAt": "2026-08-28T19:26:30.000Z",
+      "problem": "International growth lands on mid-range Android hardware, metered and unstable networks, multilingual content cold starts, and moderation systems that cannot be copied from English markets unchanged.",
+      "tradeoff": "Lite modes, capped renditions, and less speculative fetching reduce some media richness and require market-specific measurement. They also respect the user's device and data budget, which is a prerequisite for retention rather than a cleanup project.",
+      "solution": "Treat cold TTI, megabytes per session, and offline mutation success as product metrics per market; pair telemetry with field research; use translation-aware SDUI and a capability ladder; and make offline reading and visible data-saver controls first-class experiences.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/international/"
+    },
+    {
+      "slug": "networking",
+      "title": "Networking: one transport across API, images, and video",
+      "publishedAt": "2026-08-28T14:06:40.000Z",
+      "problem": "Separate default clients for JSON, images, and video duplicate DNS, TLS, connection pools, and congestion state, then all fail independently when a phone hands off between Wi-Fi and cellular.",
+      "tradeoff": "One shared engine needs adapters and centralized policy; newer devices get HTTP/3 while older ones use a tuned HTTP/2 pool; and transport caching stays disabled so purpose-built media caches do not duplicate large objects.",
+      "solution": "UnifiedTransport shares HttpEngine or OkHttp across every byte, enables QUIC connection migration without racing a metered old path, carries HLS URLs in the feed, keys caches by content rather than expiring signatures, and gates speculative work by network class.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/networking/"
+    },
+    {
+      "slug": "kotlin-flows",
+      "title": "Kotlin Flows: make state derivation observable and testable",
+      "publishedAt": "2026-08-28T03:16:40.000Z",
+      "problem": "Independent streams of structure, loading flags, connectivity, and settings can create stale combinations or rerun expensive transformations for changes that should have been cheap.",
+      "tradeoff": "One immutable UI state and an explicit Flow graph demand careful sharing and lifecycle rules. In return, recomputation boundaries, cancellation, and consistency become properties that tests can assert instead of timing accidents.",
+      "solution": "Room and repositories emit durable state; ViewModels use staged combine pipelines, stateIn with WhileSubscribed, Paging cachedIn, distinctUntilChanged, and mapLatest so costly derivations run only for the inputs that truly invalidate them.",
+      "url": "https://patrickjackson.dev/case-studies/readthat/kotlin-flows/"
+    }
+  ]
+}

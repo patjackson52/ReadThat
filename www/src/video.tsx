@@ -5,6 +5,17 @@ import { Icon, Spinner } from "./ui";
 
 type VideoAsset = VideoCell | MediaAsset;
 
+export interface VideoTransportState {
+  muted: boolean;
+  playing: boolean;
+  buffering: boolean;
+  currentTime: number;
+  duration: number;
+  togglePlayback: () => void;
+  seekTo: (seconds: number) => void;
+  toggleMuted: () => void;
+}
+
 interface VideoCoordinatorValue {
   activeId: string | null;
   report: (id: string, ratio: number) => void;
@@ -49,7 +60,13 @@ function assetValue(asset: VideoAsset, key: "hlsUrl" | "fallbackUrl" | "posterUr
   return asset[key] ?? null;
 }
 
-export function VideoPlayer({ id, asset, aspectRatio, label }: { id: string; asset: VideoAsset; aspectRatio: number; label: string }) {
+export function VideoPlayer({ id, asset, aspectRatio, label, onTransportChange }: {
+  id: string;
+  asset: VideoAsset;
+  aspectRatio: number;
+  label: string;
+  onTransportChange?: (transport: VideoTransportState | null) => void;
+}) {
   const coordinator = useContext(VideoCoordinator);
   if (!coordinator) throw new Error("VideoPlayer must be inside VideoCoordinatorProvider");
   const container = useRef<HTMLDivElement>(null);
@@ -58,6 +75,10 @@ export function VideoPlayer({ id, asset, aspectRatio, label }: { id: string; ass
   const [near, setNear] = useState(false);
   const [muted, setMuted] = useState(true);
   const [started, setStarted] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [buffering, setBuffering] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
   const { activeId, report, remove } = coordinator;
   const active = activeId === id;
   const status = asset.deliveryStatus;
@@ -121,21 +142,68 @@ export function VideoPlayer({ id, asset, aspectRatio, label }: { id: string; ass
     const element = video.current;
     if (!element) return;
     element.muted = muted;
+  }, [muted]);
+
+  useEffect(() => {
+    const element = video.current;
+    if (!element) return;
     if (active) void element.play().then(() => setStarted(true)).catch(() => undefined);
     else element.pause();
-  }, [active, muted]);
+  }, [active]);
+
+  const togglePlayback = useCallback(() => {
+    const element = video.current;
+    if (!element) return;
+    if (element.paused || element.ended) {
+      if (element.ended) element.currentTime = 0;
+      setStarted(true);
+      void element.play().catch(() => undefined);
+    } else {
+      element.pause();
+    }
+  }, []);
+  const seekTo = useCallback((seconds: number) => {
+    const element = video.current;
+    if (!element || !Number.isFinite(seconds)) return;
+    const upperBound = Number.isFinite(element.duration) && element.duration > 0 ? element.duration : seconds;
+    element.currentTime = Math.max(0, Math.min(seconds, upperBound));
+    setCurrentTime(element.currentTime);
+  }, []);
+  const toggleMuted = useCallback(() => setMuted((value) => !value), []);
+  const transport = useMemo<VideoTransportState>(() => ({
+    muted,
+    playing,
+    buffering,
+    currentTime,
+    duration,
+    togglePlayback,
+    seekTo,
+    toggleMuted,
+  }), [buffering, currentTime, duration, muted, playing, seekTo, toggleMuted, togglePlayback]);
+  useEffect(() => {
+    onTransportChange?.(transport);
+  }, [onTransportChange, transport]);
+  useEffect(() => () => onTransportChange?.(null), [id, onTransportChange]);
 
   const poster = assetValue(asset, "posterUrl") ?? undefined;
   return <div ref={container} className="video-shell" style={{ aspectRatio }}>
     <video
       ref={video}
       aria-label={label}
-      controls={started && active}
+      controls={started && active && !onTransportChange}
       muted={muted}
       playsInline
       poster={poster}
       preload={active ? "auto" : "metadata"}
+      onDurationChange={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
+      onEnded={() => { setPlaying(false); setBuffering(false); }}
+      onLoadedMetadata={(event) => setDuration(Number.isFinite(event.currentTarget.duration) ? event.currentTarget.duration : 0)}
+      onPause={() => { setPlaying(false); setBuffering(false); }}
+      onPlay={() => { setStarted(true); setPlaying(true); }}
+      onPlaying={() => { setPlaying(true); setBuffering(false); }}
+      onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
       onVolumeChange={(event) => setMuted(event.currentTarget.muted)}
+      onWaiting={() => setBuffering(true)}
     />
     {(status === "waiting" || status === "processing") && <div className="media-processing"><Spinner label="Processing video" /><span>Preparing video · {asset.processingProgress}%</span></div>}
     {status === "error" && <div className="media-processing error">Video processing failed</div>}
@@ -143,6 +211,40 @@ export function VideoPlayer({ id, asset, aspectRatio, label }: { id: string; ass
       setStarted(true);
       void video.current?.play();
     }}><Icon name="play" /></button>}
-    {started && <button className="video-mute" type="button" onClick={() => setMuted((value) => !value)}>{muted ? "Unmute" : "Mute"}</button>}
+    {started && !onTransportChange && <button className="video-mute" type="button" onClick={toggleMuted}>{muted ? "Unmute" : "Mute"}</button>}
+  </div>;
+}
+
+export function formatVideoElapsed(seconds: number): string {
+  const total = Math.max(0, Math.floor(Number.isFinite(seconds) ? seconds : 0));
+  const hours = Math.floor(total / 3_600);
+  const minutes = Math.floor(total / 60) % 60;
+  const remainder = total % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+    : `${minutes}:${String(remainder).padStart(2, "0")}`;
+}
+
+export function VideoTransportControls({ transport }: { transport: VideoTransportState }) {
+  const duration = Number.isFinite(transport.duration) && transport.duration > 0 ? transport.duration : 0;
+  const position = Math.max(0, Math.min(transport.currentTime, duration || transport.currentTime));
+  return <div className="video-transport" aria-label="Video controls">
+    <button type="button" aria-label={transport.playing ? "Pause video" : "Play video"} onClick={transport.togglePlayback}>
+      {transport.buffering && transport.playing ? <Spinner label="Buffering video" /> : <Icon name={transport.playing ? "pause" : "play"} />}
+    </button>
+    <input
+      type="range"
+      aria-label="Video position"
+      min={0}
+      max={duration || 1}
+      step="any"
+      value={duration ? position : 0}
+      disabled={!duration}
+      onChange={(event) => transport.seekTo(Number(event.currentTarget.value))}
+    />
+    <time dateTime={`PT${Math.floor(position)}S`}>{formatVideoElapsed(position)}</time>
+    <button type="button" aria-label={transport.muted ? "Unmute video" : "Mute video"} onClick={transport.toggleMuted}>
+      <Icon name={transport.muted ? "volume-off" : "volume"} />
+    </button>
   </div>;
 }

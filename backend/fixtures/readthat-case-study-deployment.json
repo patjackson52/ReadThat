@@ -1,0 +1,125 @@
+{
+  "deployedAt": "2026-08-31T17:23:56Z",
+  "fixtureVersion": 1,
+  "feedBalanceRevision": 1,
+  "api": "https://sdui-reddit-api.patjackson52.workers.dev",
+  "worker": {
+    "name": "sdui-reddit-api",
+    "versionId": "f7466227-0958-40fa-8fd3-3daa5acf9a25",
+    "deploymentId": "b26a07bc-a135-4264-b17b-d958351d2d80",
+    "percentage": 100
+  },
+  "database": {
+    "name": "sdui-reddit",
+    "id": "e1519498-ca57-40d7-a3dc-b5850517ae00"
+  },
+  "author": {
+    "id": "editorial:patrickjackson",
+    "username": "patrickjackson",
+    "url": "https://sdui-reddit-api.patjackson52.workers.dev/u/patrickjackson"
+  },
+  "community": {
+    "id": "f74e94da-942a-58b1-93d9-fa3857cbb0d1",
+    "name": "readthateng",
+    "url": "https://sdui-reddit-api.patjackson52.workers.dev/r/readthateng",
+    "subscriberCount": 1
+  },
+  "posts": [
+    {
+      "slug": "overview",
+      "id": "610466c0-544f-518b-b536-4973bcfe8af9",
+      "rankedPosition": 13,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/610466c0-544f-518b-b536-4973bcfe8af9"
+    },
+    {
+      "slug": "client-architecture",
+      "id": "11f48752-d00b-5553-83ea-ff6f0fc89539",
+      "rankedPosition": 20,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/11f48752-d00b-5553-83ea-ff6f0fc89539"
+    },
+    {
+      "slug": "sdui-feed",
+      "id": "a0f45ae0-e445-5867-9090-89d79a2921e8",
+      "rankedPosition": 29,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/a0f45ae0-e445-5867-9090-89d79a2921e8"
+    },
+    {
+      "slug": "media-feed",
+      "id": "596d1396-f414-5e22-a934-db1c3e5d8f70",
+      "rankedPosition": 30,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/596d1396-f414-5e22-a934-db1c3e5d8f70"
+    },
+    {
+      "slug": "comments",
+      "id": "311ed6a2-ad4a-595f-82cd-40e641e89fe4",
+      "rankedPosition": 37,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/311ed6a2-ad4a-595f-82cd-40e641e89fe4"
+    },
+    {
+      "slug": "data-layer",
+      "id": "204d894f-22e6-525a-bc49-1803965319bf",
+      "rankedPosition": 43,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/204d894f-22e6-525a-bc49-1803965319bf"
+    },
+    {
+      "slug": "backend",
+      "id": "fe9d0920-81ea-50cb-b00d-e649d1b2b252",
+      "rankedPosition": 47,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/fe9d0920-81ea-50cb-b00d-e649d1b2b252"
+    },
+    {
+      "slug": "observability",
+      "id": "08aae422-ca94-58de-8b43-73a7c9bc8c95",
+      "rankedPosition": 59,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/08aae422-ca94-58de-8b43-73a7c9bc8c95"
+    },
+    {
+      "slug": "international",
+      "id": "f9f92a22-a621-56b5-9031-717e1cd9ece0",
+      "rankedPosition": 62,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/f9f92a22-a621-56b5-9031-717e1cd9ece0"
+    },
+    {
+      "slug": "networking",
+      "id": "ff0a5e10-c88b-516b-ad55-609c4c6d8d90",
+      "rankedPosition": 73,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/ff0a5e10-c88b-516b-ad55-609c4c6d8d90"
+    },
+    {
+      "slug": "kotlin-flows",
+      "id": "4942423c-63f8-50bf-bef1-e8c86f6150b0",
+      "rankedPosition": 84,
+      "url": "https://sdui-reddit-api.patjackson52.workers.dev/post/4942423c-63f8-50bf-bef1-e8c86f6150b0"
+    }
+  ],
+  "ads": {
+    "promotedGroups": 7,
+    "cardsPerAd": 3,
+    "distinctReferencedPosts": 11,
+    "containsPlaceholderIds": false
+  },
+  "feedBalance": {
+    "firstReadthatengPosition": 13,
+    "top12ReadthatengPosts": 0,
+    "largestConsecutiveRun": 2
+  },
+  "verification": {
+    "health": "ok",
+    "databaseCounts": {
+      "users": 1,
+      "communities": 1,
+      "owners": 1,
+      "posts": 11,
+      "votes": 11
+    },
+    "backendTests": "32 passed",
+    "webTests": "11 passed",
+    "backendTypecheck": "passed",
+    "webTypecheck": "passed",
+    "webBuild": "passed",
+    "workerDryRun": "passed",
+    "workerStartupCheck": "passed",
+    "browserEvidenceTap": "passed",
+    "browserDeepDiveHref": "passed"
+  }
+}

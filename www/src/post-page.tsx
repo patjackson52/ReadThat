@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { ApiError, api } from "./api";
 import { useApp } from "./app-context";
 import { readCache, writeCache } from "./db";
-import { loadedTree, postGroup, replaceCursor, updateNode } from "./logic";
+import { commentPermalink, focusedCommentId } from "./deep-links";
+import { collapsedCommentCountLabel, loadedTree, postGroup, replaceCursor, updateNode } from "./logic";
 import { PostCard } from "./post-card";
+import { setSocialMetadata } from "./social";
 import type { CommentNode, CommentTree, LoadMoreNode, Post, TreeNode, VoteValue } from "./types";
 import { EmptyState, formatCount, formatRelative, Icon, Spinner } from "./ui";
 
@@ -36,6 +38,7 @@ function CommentComposer({ postId, parentId, onCreated, compact = false }: { pos
         viewerVote: 1,
         createdAt: Date.now(),
         createdAgoMin: 0,
+        descendantCount: 0,
         children: [],
         pending: !result,
       });
@@ -50,7 +53,7 @@ function CommentComposer({ postId, parentId, onCreated, compact = false }: { pos
   </form>;
 }
 
-function CommentRow({ node, depth, postId, onChange, onLoadMore }: { node: TreeNode; depth: number; postId: string; onChange: (id: string, update: (node: CommentNode) => CommentNode) => void; onLoadMore: (node: LoadMoreNode) => Promise<void> }) {
+function CommentRow({ node, depth, postId, focusedId, onChange, onLoadMore }: { node: TreeNode; depth: number; postId: string; focusedId?: string; onChange: (id: string, update: (node: CommentNode) => CommentNode) => void; onLoadMore: (node: LoadMoreNode) => Promise<void> }) {
   const { auth, notify, signInRequested } = useApp();
   const [collapsed, setCollapsed] = useState(false);
   const [replying, setReplying] = useState(false);
@@ -79,8 +82,9 @@ function CommentRow({ node, depth, postId, onChange, onLoadMore }: { node: TreeN
   }
 
   const style = { "--comment-depth": Math.min(depth, 6) } as CSSProperties;
-  return <article className={`comment${node.pending ? " pending" : ""}`} style={style} id={`comment-${node.id}`}>
-    <header><button className="collapse-comment" type="button" aria-label={collapsed ? "Expand comment" : "Collapse comment"} onClick={() => setCollapsed((value) => !value)}>{collapsed ? "+" : "−"}</button><strong>{node.author}</strong><span>·</span><time dateTime={new Date(node.createdAt).toISOString()}>{formatRelative(node.createdAt)}</time>{node.pending && <em>Pending sync</em>}</header>
+  const collapsedCountLabel = collapsed ? collapsedCommentCountLabel(node.descendantCount) : null;
+  return <article className={`comment${node.pending ? " pending" : ""}${node.id === focusedId ? " focused-comment" : ""}`} style={style} id={`comment-${node.id}`} tabIndex={node.id === focusedId ? -1 : undefined}>
+    <header><button className={`collapse-comment${collapsedCountLabel ? " with-count" : ""}`} type="button" aria-label={collapsedCountLabel ?? (collapsed ? "Expand comment" : "Collapse comment")} onClick={() => setCollapsed((value) => !value)}>{collapsedCountLabel ? `+ ${collapsedCountLabel}` : collapsed ? "+" : "−"}</button><strong>{node.author}</strong><span>·</span><time dateTime={new Date(node.createdAt).toISOString()}>{formatRelative(node.createdAt)}</time>{node.pending && <em>Pending sync</em>}</header>
     {!collapsed && <div className="comment-content">
       <p>{node.body}</p>
       <div className="comment-actions">
@@ -88,25 +92,28 @@ function CommentRow({ node, depth, postId, onChange, onLoadMore }: { node: TreeN
         <strong>{formatCount(node.score)}</strong>
         <button type="button" aria-label="Downvote comment" aria-pressed={node.viewerVote === -1} onClick={() => void vote(-1)}><Icon name="arrow-down" /></button>
         <button type="button" onClick={() => auth ? setReplying((value) => !value) : signInRequested()}><Icon name="comment" /> Reply</button>
+        <Link to={commentPermalink(postId, node.id)} viewTransition>Permalink</Link>
       </div>
       {replying && <CommentComposer compact postId={postId} parentId={node.id} onCreated={(comment) => {
         onChange(node.id, (current) => ({ ...current, children: [comment, ...current.children] }));
         setReplying(false);
       }} />}
-      <div className="comment-children">{node.children.map((child) => <CommentRow key={child.id} node={child} depth={depth + 1} postId={postId} onChange={onChange} onLoadMore={onLoadMore} />)}</div>
+      <div className="comment-children">{node.children.map((child) => <CommentRow key={child.id} node={child} depth={depth + 1} postId={postId} focusedId={focusedId} onChange={onChange} onLoadMore={onLoadMore} />)}</div>
     </div>}
   </article>;
 }
 
 export function PostPage() {
-  const { postId = "" } = useParams<{ postId: string }>();
+  const { postId = "", commentId } = useParams<{ postId: string; commentId?: string }>();
+  const routeLocation = useLocation();
+  const focusedId = focusedCommentId(commentId, routeLocation.search, routeLocation.hash);
   const { auth, online } = useApp();
   const [post, setPost] = useState<Post | null>(null);
   const [tree, setTree] = useState<CommentTree | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
-  const cacheKey = `detail:${auth?.user.id ?? "anonymous"}:${postId}`;
+  const cacheKey = `detail:${auth?.user.id ?? "anonymous"}:${postId}:${focusedId ?? "root"}`;
 
   useEffect(() => {
     let live = true;
@@ -117,7 +124,7 @@ export function PostPage() {
     }).finally(async () => {
       if (!live || !online) return;
       try {
-        const [nextPost, nextTree] = await Promise.all([api.post(postId), api.comments(postId)]);
+        const [nextPost, nextTree] = await Promise.all([api.post(postId), api.comments(postId, focusedId)]);
         if (!live) return;
         setPost(nextPost); setTree(nextTree); setFromCache(false); setLoading(false);
         await writeCache<DetailCache>(cacheKey, { post: nextPost, comments: nextTree });
@@ -126,9 +133,27 @@ export function PostPage() {
       }
     });
     return () => { live = false; };
-  }, [cacheKey, online, postId]);
+  }, [cacheKey, focusedId, online, postId]);
 
-  useEffect(() => { if (post) document.title = `${post.title} · ReadThat`; }, [post]);
+  useEffect(() => {
+    if (!tree || !focusedId) return;
+    const frame = requestAnimationFrame(() => {
+      const comment = document.getElementById(`comment-${focusedId}`);
+      comment?.scrollIntoView({ block: "center" });
+      comment?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusedId, tree]);
+
+  useEffect(() => {
+    if (!post) return;
+    const title = `${post.title} · Read That`;
+    const description = (post.body?.trim() || `${formatCount(post.score)} points · ${formatCount(post.commentCount)} comments in r/${post.subreddit}`).slice(0, 200);
+    const primary = post.mediaItems?.[0] ?? post.media;
+    const image = primary ? primary.zoomUrl ?? primary.url ?? primary.posterUrl : null;
+    document.title = title;
+    setSocialMetadata({ title, description, image });
+  }, [post]);
 
   const group = useMemo(() => post ? postGroup(post) : null, [post]);
   function changeComment(id: string, update: (node: CommentNode) => CommentNode) {
@@ -150,7 +175,7 @@ export function PostPage() {
       <header><div><p className="eyebrow">Conversation</p><h2>{post.commentCount.toLocaleString()} comments</h2></div><span>Best</span></header>
       <CommentComposer postId={post.id} parentId={null} onCreated={(comment) => setTree((current) => current ? { ...current, roots: appendChild(current.roots, null, comment) } : current)} />
       {!tree || tree.roots.length === 0 ? <EmptyState icon="comment" title="Start the conversation">Share what you think.</EmptyState>
-        : <div className="comment-tree">{tree.roots.map((node) => <CommentRow key={node.id} node={node} depth={0} postId={post.id} onChange={changeComment} onLoadMore={loadMore} />)}</div>}
+        : <div className="comment-tree">{tree.roots.map((node) => <CommentRow key={node.id} node={node} depth={0} postId={post.id} focusedId={focusedId} onChange={changeComment} onLoadMore={loadMore} />)}</div>}
       {tree?.corpusTruncated && <p className="field-note">This very large thread is showing a bounded view. Open individual branches to continue.</p>}
     </section>
     <Link className="back-to-feed" to={post.subreddit ? `/r/${post.subreddit}` : "/"} viewTransition>← Back to r/{post.subreddit}</Link>

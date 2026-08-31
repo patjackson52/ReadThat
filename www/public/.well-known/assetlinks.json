@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "dev.readthat",
+      "sha256_cert_fingerprints": [
+        "15:A0:66:E7:BF:25:07:CB:0E:4D:5C:24:DE:FC:C9:75:06:EE:FF:19:B1:06:CB:7F:76:DF:C0:E9:23:00:87:6B"
+      ]
+    }
+  }
+]

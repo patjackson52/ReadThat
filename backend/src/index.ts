@@ -32,6 +32,7 @@ import { ingestPerformance } from "./telemetry";
 import { ingestProductAnalytics } from "./product-analytics";
 import { discoverSearch, search, typeahead } from "./search";
 import { getCommunityDrawer, syncCommunityVisits } from "./community-drawer";
+import { servePromotedAsset } from "./promoted";
 import {
   AppError,
   applyCors,
@@ -111,6 +112,10 @@ router
   .on("POST", "/v1/media/stream/webhook", handleStreamWebhook)
   .on("GET", "/v1/media/:id", async (context, params) => serveMedia(context, params.id ?? ""))
   .on("HEAD", "/v1/media/:id", async (context, params) => serveMedia(context, params.id ?? ""))
+  .on("GET", "/v1/promoted/assets/:assetId", async (context, params) =>
+    servePromotedAsset(context, params.assetId ?? ""))
+  .on("HEAD", "/v1/promoted/assets/:assetId", async (context, params) =>
+    servePromotedAsset(context, params.assetId ?? ""))
   .on("POST", "/v1/posts", limited("post", 60, 60 * 60 * 1_000, createPost))
   .on("GET", "/v1/posts/:postId", async (context, params) => getPost(context, params.postId ?? ""))
   .on("POST", "/v1/posts/:postId/reshare", limited("reshare", 60, 60 * 60 * 1_000,
