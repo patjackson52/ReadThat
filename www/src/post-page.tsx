@@ -14,7 +14,11 @@ interface DetailCache { post: Post; comments: CommentTree }
 
 function appendChild(nodes: TreeNode[], parentId: string | null, child: CommentNode): TreeNode[] {
   if (!parentId) return [child, ...nodes];
-  return updateNode(nodes, parentId, (node) => ({ ...node, children: [child, ...node.children] }));
+  return updateNode(nodes, parentId, (node) => ({
+    ...node,
+    children: [child, ...node.children],
+    descendantCount: node.descendantCount + 1 + child.descendantCount,
+  }));
 }
 
 function CommentComposer({ postId, parentId, onCreated, compact = false }: { postId: string; parentId: string | null; onCreated: (comment: CommentNode) => void; compact?: boolean }) {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { flattenSearchSections } from "./api";
 import { collapsedCommentCountLabel, loadedTree, mergeGroups, postGroup, replaceCursor, updateNode } from "./logic";
-import type { FeedGroup, LoadMoreNode, Post } from "./types";
+import type { CommentNode, FeedGroup, LoadMoreNode, Post } from "./types";
 
 const group = (groupId: string, title: string): FeedGroup => ({
   groupId,
@@ -34,7 +34,7 @@ describe("search sections", () => {
 
 describe("comment tree updates", () => {
   const comments = [
-    { id: "root", parentId: null, author: "u/root", body: "Root", score: 3, viewerVote: 0 as const, createdAt: 1, createdAgoMin: 1, descendantCount: 1 },
+    { id: "root", parentId: null, author: "u/root", body: "Root", score: 3, viewerVote: 0 as const, createdAt: 1, createdAgoMin: 1, descendantCount: 4 },
     { id: "child", parentId: "root", author: "u/child", body: "Child", score: 2, viewerVote: 0 as const, createdAt: 2, createdAgoMin: 1, descendantCount: 0 },
   ];
   const cursor: LoadMoreNode = { type: "load_more", id: "more", parentId: "root", remainingCount: 2, childIds: ["later"] };
@@ -56,8 +56,15 @@ describe("comment tree updates", () => {
     const root = voted[0];
 
     expect(root?.type === "comment" ? root.children.map(({ id }) => id) : []).toEqual(["child", "later"]);
-    expect(root?.type === "comment" ? root.descendantCount : 0).toBe(2);
+    expect(root?.type === "comment" ? root.descendantCount : 0).toBe(4);
     expect(root?.type === "comment" && root.children[0]?.type === "comment" ? root.children[0].score : 0).toBe(3);
+
+    const replied = updateNode(voted, "child", (node) => ({
+      ...node,
+      children: [{ ...(replacement[0] as CommentNode) }, ...node.children],
+      descendantCount: node.descendantCount + 1,
+    }));
+    expect(replied[0]?.type === "comment" ? replied[0].descendantCount : 0).toBe(5);
   });
 
   it("formats the server-authored collapse count without walking the tree", () => {

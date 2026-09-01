@@ -582,6 +582,10 @@ describe("ReadThat backend API", () => {
       }
     }
     expect(rootCommentId).toBeTruthy();
+    const rootTotals = await env.DB.prepare(
+      "SELECT descendant_count FROM comments WHERE id = ?",
+    ).bind(rootCommentId).first<{ descendant_count: number }>();
+    expect(rootTotals?.descendant_count).toBe(13);
     await env.DB.prepare("UPDATE comments SET edited_at = ? WHERE id = ?")
       .bind(Date.now(), rootCommentId).run();
 
@@ -595,19 +599,19 @@ describe("ReadThat backend API", () => {
       displayName: "Comment Display Name",
       avatarUrl: "https://cdn.example/commenter.jpg",
       isEdited: true,
-      descendantCount: 7,
+      descendantCount: 13,
     });
 
     const smallAgain = await api.request(`/v1/posts/${post.id}/comments?count=8&depth=10`);
     expect(smallAgain.response.status).toBe(200);
     expect(smallAgain.body.cacheStatus).toBe("hit");
-    expect((smallAgain.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(7);
+    expect((smallAgain.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(13);
 
     const full = await api.request(`/v1/posts/${post.id}/comments?count=200&depth=10`);
     expect(full.response.status).toBe(200);
     expect(full.body.requestedCount).toBe(200);
     expect(JSON.stringify(full.body)).toContain("load_more");
-    expect((full.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(10);
+    expect((full.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(13);
   });
 
   it("serializes identical comment retries and rejects mutation UUID reuse", async () => {

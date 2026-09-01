@@ -346,6 +346,7 @@ class CommentsViewModel(
                         authorDisplayName = created.authorDisplayName,
                         authorAvatarUrl = created.authorAvatarUrl,
                         isEdited = created.isEdited,
+                        descendantCount = created.descendantCount,
                     )
                     tree.update { current ->
                         current?.copy(roots = CommentTreeEditor.replace(current.roots, pendingId, node))

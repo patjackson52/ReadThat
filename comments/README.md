@@ -54,13 +54,12 @@ Depth is capped (Reddit uses **10**) *"to limit the computational cost and make 
 
 Implemented **iteratively with an explicit stack, not recursively**. There's a test that flattens a **5,000-deep** thread; a recursive walk would `StackOverflowError`.
 
-The hidden count adds no client tree walk. While the server assembles the nodes
-already selected by its max-heap, each parent sums `1 + child.descendantCount`
-bottom-up. This is O(n) inside work the builder already performs, is cached with
-the standard 8/200 responses, and makes collapse lookup O(1). Counts deliberately
-exclude `load_more` cursors: those comments were not visible before the collapse.
-Load-more responses use the heap's parent-before-child order to compute the same
-metadata in one reverse pass; optimistic tree edits update only their copied
+The hidden count adds no client tree walk. SQLite stores each comment's total
+descendant count and the insert trigger increments the new reply's ancestor chain.
+The max-heap only selects presentation nodes; it does not redefine subtree size.
+That makes the value exact across the standard 8/200 responses and the depth-10
+boundary, while cached reads and collapse lookup stay O(1). Loading a cursor
+preserves the total; optimistic inserts and rollbacks adjust only their copied
 ancestor spine.
 
 Room encoding/decoding, load-more splicing, voting, and reply insertion are also

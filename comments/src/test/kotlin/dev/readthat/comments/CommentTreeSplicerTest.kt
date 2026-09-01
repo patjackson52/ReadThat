@@ -107,7 +107,9 @@ class CommentTreeSplicerTest {
 
     @Test
     fun `splice under a collapsed ancestor is legal but invisible`() {
-        val t = tree(c("p", c("p1", cursor("more_p1", "p1", listOf("x", "y")))))
+        val p1 = c("p1", cursor("more_p1", "p1", listOf("x", "y")))
+            .copy(descendantCount = 2)
+        val t = tree(c("p", p1).copy(descendantCount = 3))
         val response = LoadMoreResponse(listOf(raw("x", "p1"), raw("y", "p1")), emptyList())
         val collapsed = setOf("p")
 
@@ -117,7 +119,7 @@ class CommentTreeSplicerTest {
 
         assertEquals(listOf("p"), render.rows.map { it.key })
         val p = render.rows.single() as dev.readthat.comments.domain.CommentRow.Comment
-        // the spliced comments count toward the hidden-descendant badge
+        // Materializing a cursor does not change the authoritative subtree total.
         assertEquals(3, p.collapsedDescendants) // p1 + x + y
     }
 

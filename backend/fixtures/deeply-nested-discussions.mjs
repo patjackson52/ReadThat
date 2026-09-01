@@ -62,7 +62,7 @@ Questions for this 50-root fixture:
     links: [sources.sqliteRecursive, sources.http],
     debatePoints: [
       ["Server authority", "The server knows the filtered corpus and should author the cursor's omitted-ID set. A client cannot infer comments it has never been told exist."],
-      ["Local presentation", "The client can sum cursor counts for a screen and compute hidden-by-collapse counts for loaded nodes, but those numbers have different semantics and labels."],
+      ["Local presentation", "The client reads an authoritative total-descendant count for collapse; cursor counts still describe bounded continuation candidates and use different labels."],
       ["Bounded cursor identity", "Chunk omitted child IDs so expansion requests remain bounded. A thousand UUIDs in one button payload is a hidden pagination bug."],
       ["Mutation drift", "Counts are snapshots. New, deleted, or moderated comments can make a cursor stale, so expansion should tolerate missing IDs and return replacement cursors."],
       ["Subtree totals", "If product needs 'all descendants' rather than immediate omitted candidates, store or calculate that metric explicitly; do not overload child_count."],
@@ -72,10 +72,10 @@ Questions for this 50-root fixture:
 That does not mean every displayed number comes from the server. There are at least three different counts:
 
 1. **Omitted candidates represented by a cursor.** Server-calculated and sent with the cursor.
-2. **Loaded descendants hidden by a local collapse.** Client-calculated from its normalized loaded tree.
-3. **Total descendants in the entire current corpus.** Server-calculated from a subtree aggregate or query, and potentially expensive or stale.
+2. **Total descendants hidden by a local collapse.** Server-authored from a maintained subtree aggregate.
+3. **Materialized descendants in this response.** A transport detail used for rendering, not collapse copy.
 
-Those counts deserve different language. “100 more replies” can mean this cursor contains 100 immediate candidate IDs. “12 hidden” can mean the user collapsed 12 already-loaded descendants. “1.4k replies” might be a post-level approximate total. Reusing one number for all three creates bugs that are hard to see in small fixtures.
+Those counts deserve different language. “100 more replies” can mean this cursor contains 100 immediate candidate IDs. “12 hidden” means the collapsed comment has 12 total descendants, including continuations. “1.4k replies” might be a post-level approximate total. Reusing one number for all three creates bugs that are hard to see in small fixtures.
 
 The current API uses a Reddit-style stateless cursor: \`parentId\`, \`remainingCount\`, and a bounded list of \`childIds\`. The list is deliberately capped at 100 IDs. If a root-level selection leaves 800 comments unreturned, the payload contains eight separate cursor nodes instead of one control carrying 800 UUIDs. Expansion posts at most 100 IDs back to \`/comments/more\`, and the server can select up to 100 comments below them. That keeps request bodies and SQL bound parameters predictable.
 
@@ -240,7 +240,7 @@ This 15-level chain tests whether the cached root screen stops at the presentati
       ["Flatten before composition", "Transform the loaded tree into a stable keyed row list in the ViewModel or domain layer. Recursive nested Columns multiply measure work and complicate virtualization."],
       ["Cap visual depth", "Structural depth can continue indefinitely, but indentation should stop or re-root around level 8–10 so content width remains usable."],
       ["Stable keys preserve anchors", "Comment and cursor IDs must be stable across merges and splices so the list can retain scroll position and avoid unnecessary recomposition."],
-      ["Collapse skips subtrees", "A collapsed parent stays visible while all loaded descendants disappear. Count those loaded descendants iteratively and do not claim unloaded cursor totals as locally hidden."],
+      ["Collapse skips subtrees", "A collapsed parent stays visible while its branch disappears. Read the server-authored total descendant count instead of walking only the loaded projection."],
       ["Benchmark release builds", "Measure macrobenchmarks and frame timing in optimized builds; debug Compose behavior is not a production performance result."],
     ],
     body: `Twenty structural levels are easy to store and surprisingly easy to render badly. The naive UI recursively nests a \`Column\` for every comment, adds padding at each level, and places the whole structure inside one scroll container. That forfeits lazy composition, multiplies measure/layout work, makes stable scroll anchors difficult, and eventually leaves a narrow ribbon for the actual body text.
@@ -255,7 +255,7 @@ Indentation itself should also saturate. A fixed 12 dp per level makes a level-1
 
 Merges and expansions must preserve scroll position. Stable comment IDs and cursor IDs are essential. When the 200-comment phase arrives, existing roots retain order, and newly revealed branches do not auto-expand if they were visually leaves in phase one. When load-more replaces one cursor with returned comments and replacement cursors, splice at that exact keyed position. If the list is rebuilt, unchanged keys allow Compose to reuse composition and keep the visible anchor.
 
-Collapse counts need disciplined semantics. The client can count loaded descendant comment nodes using an iterative stack. It should not add a cursor's server omission count to “hidden by collapse” unless the label explicitly says the number includes unloaded replies. A collapsed badge of \`+12\` should mean twelve loaded comments were removed from the visible projection; a separate server-authored cursor can still say more replies are available.
+Collapse counts need disciplined semantics. The client should not derive the value from the depth-limited projection: doing so makes the label change as continuations load. Read the server-authored total descendant count in O(1), including replies behind cursors. A collapsed badge of \`+12\` then means the logical branch contains twelve replies; a separate cursor still communicates how much network work remains.
 
 Infinite scrolling is useful for breadth but not a replacement for branch controls. Near the bottom of a wide root list, automatically request the next root cursor if network and lifecycle state permit. For a nested cursor under a specific comment, require a tap: expanding it can insert rows above the current viewport bottom and is a semantic choice. Use one load per cursor ID, deduplicate concurrent taps, expose retry state in the row, and cancel work when the screen leaves the active lifecycle unless it is committing durable cache state.
 
@@ -323,7 +323,7 @@ The current sample already has a per-post realtime publication seam for writes, 
 5. backpressure and coalescing;
 6. observability for reconnects, missed gaps, and resync cost.
 
-This hybrid fixture—120 roots plus a featured 15-level branch with side replies—tests both paths conceptually. REST should return a stable selected tree and bounded cursors. Realtime can announce that the corpus changed, but the client should not need to receive or retain all hidden siblings merely to keep a count current.`,
+This hybrid fixture—120 roots plus a featured 15-level branch with side replies—tests both paths conceptually. REST should return a stable selected tree, bounded cursors, and write-side total descendant counts. Realtime can announce that the corpus changed, but the client should not need to receive or retain all hidden siblings merely to keep a count current.`,
   },
   {
     fixtureId: "pathological-thread-test-plan",
@@ -353,7 +353,7 @@ This dataset provides the following matrix:
 | Hybrid-live | 120 | 15 | ranked branch plus root pagination |
 | Hybrid-extreme | 300 | 20 | breadth, depth, side replies, and long content |
 
-The first test layer is correctness. Assert unique stable IDs, valid parent links, stored depth equal to parent depth plus one, exact post/root/max-depth counts, and child-count triggers. For every 8/200 response, count real comments separately from cursor nodes. Sum server-authored cursor chunks and confirm they represent omitted next candidates. Expand every cursor once, ensure the spent cursor disappears, and verify returned comments splice under their real parents. Collapse a loaded subtree and ensure only loaded descendants contribute to the local hidden count.
+The first test layer is correctness. Assert unique stable IDs, valid parent links, stored depth equal to parent depth plus one, exact post/root/max-depth counts, and child/descendant-count triggers. For every 8/200 response, count real comments separately from cursor nodes. Sum server-authored cursor chunks and confirm they represent omitted next candidates. Expand every cursor once, ensure the spent cursor disappears, and verify returned comments splice under their real parents. Collapse a subtree and ensure its total descendant count stays stable before and after cursor expansion.
 
 The second layer is network. Record status, cache hit/miss, server timing, uncompressed bytes, gzip bytes, parse time, and retry behavior. Run cold and warm server-cache requests. Test loss and latency, cancellation during navigation, duplicate taps, and expansion after comments were deleted. Confirm that the initial eight-comment response remains bounded even when the corpus is 1,000 roots and that no cursor carries more than 100 IDs.
 

@@ -15,7 +15,10 @@ object CommentTreeEditor {
     ): List<CommentNode> {
         if (parentId == null) return roots + created
         return edit(roots, parentId) { parent ->
-            parent.withChildren(parent.children + created)
+            parent.copy(
+                children = parent.children + created,
+                descendantCount = parent.descendantCount + 1 + created.descendantCount,
+            )
         }
     }
 
@@ -42,8 +45,16 @@ object CommentTreeEditor {
             val node = stack.removeLast()
             if (node is CommentNode.Comment) {
                 if (node.children.any { it.id == commentId }) {
+                    val removed = node.children.first { it.id == commentId }
+                    val removedComments = when (removed) {
+                        is CommentNode.Comment -> 1 + removed.descendantCount
+                        is CommentNode.LoadMore -> 0
+                    }
                     return edit(roots, node.id) { parent ->
-                        parent.withChildren(parent.children.filterNot { it.id == commentId })
+                        parent.copy(
+                            children = parent.children.filterNot { it.id == commentId },
+                            descendantCount = (parent.descendantCount - removedComments).coerceAtLeast(0),
+                        )
                     }
                 }
                 node.children.forEach(stack::addLast)
@@ -73,16 +84,18 @@ object CommentTreeEditor {
 
         val target = comments[targetId] ?: return roots
         val transformed = transform(target)
-        var rebuilt = transformed.withChildren(transformed.children)
+        val descendantDelta = transformed.descendantCount - target.descendantCount
+        var rebuilt = transformed
         var rebuiltId = targetId
 
         while (true) {
             val parentId = parentOf[rebuiltId] ?: break
             val parent = comments.getValue(parentId)
-            rebuilt = parent.withChildren(
-                parent.children.map { child ->
+            rebuilt = parent.copy(
+                children = parent.children.map { child ->
                     if (child.id == rebuiltId) rebuilt else child
                 },
+                descendantCount = (parent.descendantCount + descendantDelta).coerceAtLeast(0),
             )
             rebuiltId = parentId
         }

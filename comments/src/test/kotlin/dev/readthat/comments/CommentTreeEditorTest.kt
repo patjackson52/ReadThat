@@ -18,11 +18,31 @@ class CommentTreeEditorTest {
         val inserted = CommentTreeEditor.insert(voted, "c1499", comment("reply"))
 
         var current = inserted.first() as CommentNode.Comment
+        assertEquals(1500, current.descendantCount)
         repeat(1499) { current = current.children.single() as CommentNode.Comment }
         assertEquals(42, current.score)
         assertEquals(1, current.viewerVote)
         assertEquals("reply", (current.children.single() as CommentNode.Comment).id)
         assertSame(untouched, inserted[1])
+    }
+
+    @Test
+    fun `optimistic edits adjust authoritative totals only along the ancestor spine`() {
+        val loadedChild = comment("loaded").copy(descendantCount = 4)
+        val root = comment("root", listOf(loadedChild)).copy(descendantCount = 9)
+        val roots: List<CommentNode> = listOf(root)
+
+        val inserted = CommentTreeEditor.insert(roots, "loaded", comment("new"))
+        val insertedRoot = inserted.single() as CommentNode.Comment
+        val insertedChild = insertedRoot.children.single() as CommentNode.Comment
+        assertEquals(10, insertedRoot.descendantCount)
+        assertEquals(5, insertedChild.descendantCount)
+
+        val removed = CommentTreeEditor.remove(inserted, "new")
+        val removedRoot = removed.single() as CommentNode.Comment
+        val removedChild = removedRoot.children.single() as CommentNode.Comment
+        assertEquals(9, removedRoot.descendantCount)
+        assertEquals(4, removedChild.descendantCount)
     }
 
     @Test

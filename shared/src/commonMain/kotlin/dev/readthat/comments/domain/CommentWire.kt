@@ -39,10 +39,9 @@ sealed interface CommentNode {
         /** Deliberately separate from updatedAt: votes also update comment rows. */
         val isEdited: Boolean = false,
         /**
-         * Comment nodes materialized below this node. Load-more cursors are excluded because those
-         * comments were not visible before a collapse. The server supplies this with the heap-built
-         * tree; the default keeps locally assembled and older cached trees correct in one bottom-up
-         * pass as their nodes are constructed.
+         * Total live comments structurally below this node, including replies behind load-more
+         * cursors. The server maintains this write-side so collapse is an O(1) lookup regardless of
+         * the response's count/depth budget. The default keeps local and older cached trees usable.
          */
         val descendantCount: Int = materializedDescendantCount(children),
     ) : CommentNode
@@ -120,8 +119,9 @@ internal fun materializedDescendantCount(children: List<CommentNode>): Int = chi
     }
 }
 
-internal fun CommentNode.Comment.withChildren(children: List<CommentNode>): CommentNode.Comment =
-    copy(children = children, descendantCount = materializedDescendantCount(children))
+internal fun CommentNode.Comment.withChildrenPreservingTotal(
+    children: List<CommentNode>,
+): CommentNode.Comment = copy(children = children)
 
 /**
  * Wire shape of a load-more response — flat, parent-linked, /api/morechildren style.

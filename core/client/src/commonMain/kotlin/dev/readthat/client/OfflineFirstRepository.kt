@@ -889,6 +889,7 @@ class OfflineFirstRepository(
                 authorDisplayName = created.authorDisplayName,
                 authorAvatarUrl = created.authorAvatarUrl,
                 isEdited = created.isEdited,
+                descendantCount = created.descendantCount,
             )
             val latest = getDocument<CommentTree>(key)
                 ?: return refreshComments(postId, rootCommentId, focusCommentId)

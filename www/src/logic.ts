@@ -38,28 +38,46 @@ export function postGroup(post: Post): FeedGroup {
 }
 
 export function updateNode(nodes: TreeNode[], id: string, update: (node: CommentNode) => CommentNode): TreeNode[] {
-  return nodes.map((node) => {
-    if (node.type !== "comment") return node;
-    if (node.id === id) return withAccurateDescendantCount(update(node));
-    return withAccurateDescendantCount({ ...node, children: updateNode(node.children, id, update) });
+  return updateNodeWithDelta(nodes, id, update).nodes;
+}
+
+function updateNodeWithDelta(
+  nodes: TreeNode[],
+  id: string,
+  update: (node: CommentNode) => CommentNode,
+): { nodes: TreeNode[]; descendantDelta: number; found: boolean } {
+  let descendantDelta = 0;
+  let found = false;
+  const next = nodes.map((node) => {
+    if (node.type !== "comment" || found) return node;
+    if (node.id === id) {
+      const updated = update(node);
+      descendantDelta = updated.descendantCount - node.descendantCount;
+      found = true;
+      return updated;
+    }
+    const childResult = updateNodeWithDelta(node.children, id, update);
+    if (!childResult.found) return node;
+    descendantDelta = childResult.descendantDelta;
+    found = true;
+    return {
+      ...node,
+      children: childResult.nodes,
+      descendantCount: Math.max(0, node.descendantCount + descendantDelta),
+    };
   });
+  return { nodes: found ? next : nodes, descendantDelta, found };
 }
 
 export function replaceCursor(nodes: TreeNode[], cursorId: string, replacement: TreeNode[]): TreeNode[] {
   return nodes.flatMap((node) => {
     if (node.id === cursorId) return replacement;
     if (node.type !== "comment") return [node];
-    return [withAccurateDescendantCount({
+    return [{
       ...node,
       children: replaceCursor(node.children, cursorId, replacement),
-    })];
+    }];
   });
-}
-
-function withAccurateDescendantCount(node: CommentNode): CommentNode {
-  const descendantCount = node.children.reduce((total, child) =>
-    total + (child.type === "comment" ? 1 + child.descendantCount : 0), 0);
-  return descendantCount === node.descendantCount ? node : { ...node, descendantCount };
 }
 
 export function collapsedCommentCountLabel(count: number): string | null {

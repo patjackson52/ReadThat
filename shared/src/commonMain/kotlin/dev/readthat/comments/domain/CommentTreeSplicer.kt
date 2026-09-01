@@ -105,12 +105,12 @@ object CommentTreeSplicer {
 
         var childId: String = cursor.parentId
         var rebuilt: CommentNode.Comment =
-            byId.getValue(childId).let { it.withChildren(replaceIn(it.children)) }
+            byId.getValue(childId).let { it.withChildrenPreservingTotal(replaceIn(it.children)) }
 
         while (true) {
             val parentId = parentOf[childId] ?: break
             val parent = byId.getValue(parentId)
-            rebuilt = parent.withChildren(
+            rebuilt = parent.withChildrenPreservingTotal(
                 parent.children.map { if (it.id == childId) rebuilt else it },
             )
             childId = parentId

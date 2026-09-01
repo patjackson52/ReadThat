@@ -64,7 +64,7 @@ open class FakeCommentsApi(
                 rootCount = rootCount,
                 maxChildren = maxChildrenPerComment,
                 total = budget,
-            ),
+            ).withTotalDescendantCounts(),
         )
     }
 
@@ -176,7 +176,7 @@ open class FakeCommentsApi(
         }
 
         return LoadMoreResponse(
-            comments = out.withSelectedDescendantCounts(),
+            comments = out,
             cursors = cursors,
         )
     }
@@ -275,6 +275,7 @@ open class FakeCommentsApi(
                     body = rawChild.body,
                     score = rawChild.score,
                     createdAgoMin = rawChild.createdAgoMin,
+                    descendantCount = rawChild.descendantCount,
                     children = children,
                 )
             }
@@ -347,15 +348,14 @@ open class FakeCommentsApi(
         val truncatedChildIds: List<String> = emptyList(),
     )
 
-    /** Heap selection emits parents before children; a reverse pass mirrors the Worker contract. */
-    private fun List<RawComment>.withSelectedDescendantCounts(): List<RawComment> {
-        val selectedIds = mapTo(HashSet(size)) { it.id }
+    /** Generated rows are parent-before-child, so one reverse pass computes full subtree totals. */
+    private fun List<RawComment>.withTotalDescendantCounts(): List<RawComment> {
         val counts = HashMap<String, Int>(size)
         for (index in indices.reversed()) {
             val raw = this[index]
             val count = counts[raw.id] ?: 0
             counts[raw.id] = count
-            raw.parentId?.takeIf { it in selectedIds }?.let { parentId ->
+            raw.parentId?.let { parentId ->
                 counts[parentId] = (counts[parentId] ?: 0) + 1 + count
             }
         }
