@@ -168,7 +168,7 @@ and rules in the background, and inserts that typed chrome above the existing
 subreddit-scoped SDUI `FeedScreen`. Join/leave atomically updates both the page
 and drawer before a process-safe WorkManager outbox reconciles the server.
 
-⚠️ **`:feature:comments` is deliberately not SDUI.** Reddit's feed is server-driven; its post-detail screen is a recursive domain model. Knowing *where SDUI stops* — and why — is the more interesting answer. See [`comments/README.md`](comments/README.md).
+⚠️ **`:feature:comments` is deliberately not SDUI.** Reddit's feed is server-driven; its post-detail screen is a recursive domain model. Knowing *where SDUI stops* — and why — is the more interesting answer. See [`comments/README.md`](comments/README.md). The focused case study, [“Counting What Disappears”](docs/HIDDEN_COMMENT_COUNTS.md), covers the UX and performance tradeoffs behind collapsed-thread counts.
 
 ---
 
