@@ -38,7 +38,6 @@ Native capabilities remain modular:
   :core:media-acquisition, :core:media-acquisition-ui
   :core:sharing, :core:sharing-ui
 
-:flows is a standalone teaching/test module and is not on the app graph.
 ```
 
 Android `:app` remains the packaging, WorkManager, and process-lifecycle host,

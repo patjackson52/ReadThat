@@ -32,10 +32,6 @@ include(":feature:auth-ui")
 // modules; :composeApp is deliberately only the Android/iOS binary host.
 include(":feature:app-ui")
 
-// Self-contained, additive. :app does not depend on it; it stands alone with its
-// own tests and its own optional demo screen.
-include(":flows")
-
 // Platform-neutral contracts, validation, and reducers shared by Android and iOS.
 include(":core:model")
 project(":core:model").projectDir = file("shared")

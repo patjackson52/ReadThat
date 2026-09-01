@@ -68,7 +68,6 @@ Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet 
 ./gradlew :feature:app-ui:allTests             # shared application/UI contracts
 ./gradlew :core:data:testAndroidHostTest       # Room 3 DAO/outbox behavior
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
-./gradlew :flows:testDebugUnitTest             # standalone Flow patterns
 ./gradlew :app:lintDebug :core:media:lintDebug # Android host/native media lint
 ./gradlew :app:assembleDebug                    # APK
 ./gradlew installDebug               # to a device/emulator
@@ -117,7 +116,6 @@ caches images, and applies a quota-aware LRU only to immutable video segments.
 | **`:iosApp`** | SwiftUI/Xcode lifecycle host plus PhotosUI, share sheet, Keychain/AVPlayer integrations exported by the KMP framework |
 | **`:core:media`** | Media3 playback, ABR/data-saver policy, stable segment cache identity |
 | **`:core:observability`** | KMP Android/iOS/browser performance event contract and monotonic timers |
-| **`:flows`** | [Standalone Kotlin Flow patterns](flows/README.md); intentionally outside the app graph |
 
 Feature UI modules are navigation-agnostic KMP presentation slices. They emit
 identifiers and intents to `:feature:app-ui`; shared controllers and repositories
