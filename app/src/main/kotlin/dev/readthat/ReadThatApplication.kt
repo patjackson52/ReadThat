@@ -12,34 +12,16 @@ import coil3.network.NetworkFetcher
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import dev.readthat.client.AndroidReadThatClientConfiguration
-import dev.readthat.client.AndroidReadThatProductAnalyticsConfiguration
-import dev.readthat.client.AndroidReadThatProductAnalyticsRegistry
 import dev.readthat.image.ui.clearPlatformImageMemoryCache
 import dev.readthat.networking.UnifiedCoilNetworkClient
 import dev.readthat.networking.UnifiedTransport
-import dev.readthat.observability.PerformanceTelemetry
-import dev.readthat.observability.performanceTimer
 import dev.readthat.playback.VideoPlaybackCoordinator
 import dev.readthat.data.sync.FeedSyncScheduler
-import dev.readthat.observability.AndroidPerformanceRecorder
-import dev.readthat.observability.AndroidPerformanceSession
 import dev.readthat.observability.ProductAnalyticsUploadScheduler
-import java.util.concurrent.atomic.AtomicBoolean
+import dev.readthat.observability.TelemetryUploadScheduler
 import okio.Path.Companion.toOkioPath
 
 class ReadThatApplication : Application(), SingletonImageLoader.Factory {
-    private val processHomeTimer = performanceTimer()
-    private val firstActivity = AtomicBoolean(true)
-
-    fun newPerformanceSession(): AndroidPerformanceSession {
-        val cold = firstActivity.getAndSet(false)
-        return AndroidPerformanceSession(
-            homeTimer = if (cold) processHomeTimer else performanceTimer(),
-            startType = if (cold) "cold" else "warm",
-        )
-    }
-
     override fun onCreate() {
         super.onCreate()
         UnifiedTransport.initialize(
@@ -51,30 +33,16 @@ class ReadThatApplication : Application(), SingletonImageLoader.Factory {
                 "https://imagedelivery.net",
             ),
         )
-        PerformanceTelemetry.install(AndroidPerformanceRecorder(this))
-        val productAnalytics = AndroidReadThatProductAnalyticsRegistry.get(
-            this,
-            AndroidReadThatProductAnalyticsConfiguration(
-                client = AndroidReadThatClientConfiguration(
-                    baseUrl = BuildConfig.READTHAT_API_BASE_URL,
-                    appVersion = BuildConfig.VERSION_NAME,
-                    demoUsername = BuildConfig.READTHAT_DEMO_USERNAME,
-                    demoPassword = BuildConfig.READTHAT_DEMO_PASSWORD,
-                ),
-                buildType = BuildConfig.BUILD_TYPE,
-            ),
-        )
+        // Shared exporters own foreground intake. WorkManager remains the Android process-death
+        // drain for the same Room outboxes and must be registered before the first Activity.
+        TelemetryUploadScheduler.initialize(this)
         ProductAnalyticsUploadScheduler.initialize(this)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
-                // Shared Compose owns its own lifecycle bridge; the mature shell needs this
-                // adapter until its root navigation host is migrated.
-                if (!BuildConfig.READTHAT_USE_SHARED_APP) productAnalytics.onForeground()
                 VideoPlaybackCoordinator.setAppForeground(true)
             }
 
             override fun onStop(owner: LifecycleOwner) {
-                if (!BuildConfig.READTHAT_USE_SHARED_APP) productAnalytics.onBackground()
                 VideoPlaybackCoordinator.setAppForeground(false)
             }
         })

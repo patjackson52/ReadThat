@@ -17,7 +17,6 @@ dependencyResolutionManagement {
 }
 rootProject.name = "ReadThat"
 include(":app")
-include(":feature:feed")
 include(":feature:feed-ui")
 include(":feature:detail-ui")
 include(":feature:mediafeed-ui")
@@ -32,22 +31,12 @@ include(":feature:auth-ui")
 // KMP application coordinator. This module composes the independently reusable feature UI
 // modules; :composeApp is deliberately only the Android/iOS binary host.
 include(":feature:app-ui")
-include(":feature:profile")
-include(":feature:search")
-include(":feature:communities")
-include(":feature:community-detail")
-include(":feature:mediafeed")
 
 // Self-contained, additive. :app does not depend on it; it stands alone with its
 // own tests and its own optional demo screen.
 include(":flows")
 
-// Post-detail screen: recursive comment tree, two-phase load, collapse.
-include(":feature:comments")
-project(":feature:comments").projectDir = file("comments")
-
-// Platform-neutral contracts, validation, and reducers shared by Android now
-// and by the planned iOS/web clients later.
+// Platform-neutral contracts, validation, and reducers shared by Android and iOS.
 include(":core:model")
 project(":core:model").projectDir = file("shared")
 
@@ -56,23 +45,19 @@ project(":core:model").projectDir = file("shared")
 include(":core:observability")
 project(":core:observability").projectDir = file("observability")
 
-// Shared account-scoped Room source of truth. Persistence used by more than
-// one feature must not be owned by :feature:feed.
+// Shared account-scoped Room source of truth for every client feature.
 include(":core:data")
-include(":core:post")
 
 // Platform-neutral post/comment URL parsing and delivery. Kept independent from
-// navigation and UI so Android, iOS, and future browser clients share one contract.
+// navigation and UI so Android and iOS share one contract.
 include(":core:deeplink")
 
-// Platform-neutral application destinations and bounded back-stack policy. UI
-// hosts translate these into native/Navigation Compose route representations.
+// Platform-neutral application destinations and bounded back-stack policy. Hosts
+// persist the same validated navigation state through their native state registries.
 include(":core:navigation")
 
-// Reusable Compose primitives shared across feature modules. Keeping rich-text rendering here
-// avoids feature-to-feature dependencies while giving posts and comments one Markdown contract.
+// Reusable KMP Compose primitives shared across feature modules.
 include(":core:design")
-include(":core:ui")
 
 // One process-wide HTTP stack shared by JSON, Coil, and Media3. HttpEngine
 // supplies QUIC/HTTP-3 on Android 14+; older releases share one OkHttp pool.

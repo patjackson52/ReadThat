@@ -13,7 +13,6 @@ import dev.readthat.data.db.AppDatabase
 import dev.readthat.data.db.CacheScope
 import dev.readthat.domain.CellUi
 import dev.readthat.mediafeed.domain.MediaFeedItem
-import dev.readthat.mediafeed.domain.MediaFeedPage
 import dev.readthat.mediafeed.domain.MediaFeedLaunchContext
 import dev.readthat.navigation.AppDestination
 import dev.readthat.navigation.AppNavigationPolicy
@@ -47,13 +46,10 @@ import dev.readthat.shared.PostHeader
 import dev.readthat.shared.PostTransitionPreview
 import dev.readthat.shared.SessionState
 import dev.readthat.shared.VoteSnapshot
-import dev.readthat.shared.videoPosterCacheKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
@@ -96,18 +92,9 @@ data class CommunityState(
 )
 
 data class MediaFeedState(
-    val anchorPostId: String? = null,
-    val page: MediaFeedPage? = null,
     /** Detail/comments rendered as a sheet without replacing the media-feed destination. */
     val commentsPostId: String? = null,
-    val initialCacheTier: String? = null,
-    val loading: Boolean = false,
-    val appending: Boolean = false,
-    val isOffline: Boolean = false,
-    val error: String? = null,
-) {
-    val items: List<MediaFeedItem> get() = page?.items.orEmpty()
-}
+)
 
 data class ReadThatUiState(
     val session: SessionState = SessionState.Restoring,
@@ -199,8 +186,6 @@ class ReadThatViewModel(
     )
     private val auth = authController.form
     private val activeCommunityFeedController = MutableStateFlow<SharedFeedController?>(null)
-    private var mediaPreviewPrefetch: Job? = null
-    private var mediaFeedLoadJob: Job? = null
     private var mediaFeedControllerJob: Job? = null
     private var searchControllerJob: Job? = null
     private var searchControllerAccountId: String? = null
@@ -403,6 +388,10 @@ class ReadThatViewModel(
     }
 
     private fun activateDestination(next: AppDestination) {
+        // Resolve the transition header while the source destination and its bounded
+        // presentation window are still alive. Media controllers are released below.
+        val projectedHeader = (next as? AppDestination.PostDetail)
+            ?.let { destination -> projectedPostHeader(destination.postId) }
         if (destination.value == AppDestination.EditProfile && next != AppDestination.EditProfile) {
             profileController.discardEditor()
         }
@@ -417,7 +406,6 @@ class ReadThatViewModel(
         }
         if (next !is AppDestination.Community) communityDetailController.close()
         if (next !is AppDestination.Media) {
-            mediaFeedLoadJob?.cancel()
             mediaFeedControllerJob?.cancel()
             mediaFeedControllerJob = null
             activeMediaFeedController.value = null
@@ -444,7 +432,7 @@ class ReadThatViewModel(
                 postId = next.postId,
                 rootCommentId = next.rootCommentId,
                 focusedCommentId = next.focusCommentId,
-                projectedHeader = projectedPostHeader(next.postId),
+                projectedHeader = projectedHeader,
             )
             is AppDestination.Community -> communityDetailController.open(next.name)
             AppDestination.Communities -> communityDiscoveryController.onOpened()
@@ -588,8 +576,6 @@ class ReadThatViewModel(
         communityPresentationWindow[postId]
             ?.cells?.filterIsInstance<dev.readthat.domain.CellUi.ActionBar>()?.firstOrNull()
             ?.let { return VoteSnapshot(it.score, it.viewerVote) }
-        mediaFeed.value.items.firstOrNull { it.postId == postId }
-            ?.let { return VoteSnapshot(it.score, it.viewerVote) }
         (search.value.results.firstOrNull { it is SearchPost && it.id == postId } as? SearchPost)
             ?.let { return VoteSnapshot(it.score, it.viewerVote) }
         feedPresentationWindow[postId]
@@ -616,16 +602,6 @@ class ReadThatViewModel(
                 },
             ))
         }
-        mediaFeed.value = mediaFeed.value.copy(
-            page = mediaFeed.value.page?.let { page ->
-                page.copy(items = page.items.map { item ->
-                    if (item.postId != postId) item else item.copy(
-                        score = vote.score,
-                        viewerVote = vote.viewerVote,
-                    )
-                })
-            },
-        )
         search.value = search.value.copy(
             results = search.value.results.map { item ->
                 if (item is SearchPost && item.id == postId) {
@@ -1006,28 +982,10 @@ class ReadThatViewModel(
         }
     }
 
-    fun appendMediaFeed() = viewModelScope.launch {
-        val current = mediaFeed.value.page ?: return@launch
-        val anchor = mediaFeed.value.anchorPostId ?: return@launch
-        if (mediaFeed.value.loading || mediaFeed.value.appending || current.nextCursor == null) return@launch
-        mediaFeed.value = mediaFeed.value.copy(appending = true)
-        val page = repository.appendMediaFeed(anchor, current)
-        mediaFeed.value = mediaFeed.value.copy(page = page, appending = false)
-        prefetchMediaPreviews(page)
-    }
-
     /**
      * Reuses the same Room-first detail/comment pipeline as full-screen detail while retaining
      * the media feed (and its warmed native player) underneath the modal presentation.
      */
-    fun openMediaComments(postId: String) {
-        if (destination.value !is AppDestination.Media) return
-        if (mediaFeed.value.items.none { it.postId == postId }) return
-        if (mediaFeed.value.commentsPostId == postId) return
-        mediaFeed.value = mediaFeed.value.copy(commentsPostId = postId)
-        detailController.open(postId, projectedHeader = projectedPostHeader(postId))
-    }
-
     fun openMediaComments(item: MediaFeedItem) {
         if (destination.value !is AppDestination.Media) return
         if (mediaFeed.value.commentsPostId == item.postId) return
@@ -1096,7 +1054,7 @@ class ReadThatViewModel(
     private fun projectedPostHeader(postId: String): PostHeader? =
         feedPresentationWindow[postId]?.preview?.toPostHeader()
             ?: communityPresentationWindow[postId]?.preview?.toPostHeader()
-            ?: mediaFeed.value.items.firstOrNull { it.postId == postId }?.toPostHeader()
+            ?: mediaFeedNavigationItems.value.firstOrNull { it.postId == postId }?.toPostHeader()
 
     private fun activateSharedMediaFeed(anchorPostId: String) {
         mediaFeedControllerJob?.cancel()
@@ -1128,10 +1086,7 @@ class ReadThatViewModel(
                 repository.votePost(postId, value, PerformanceSurface.MEDIA)
             },
         )
-        mediaFeed.value = MediaFeedState(
-            anchorPostId = anchorPostId,
-            initialCacheTier = if (launchContext == null) null else "navigation_seed",
-        )
+        mediaFeed.value = MediaFeedState()
     }
 
     private fun ensureSharedSearchController(): SharedSearchController? {
@@ -1161,68 +1116,11 @@ class ReadThatViewModel(
         activeSearchController.value = null
     }
 
-    /** Retained during convergence for the compiled legacy composeApp media screen. */
-    private fun loadMediaFeed(anchorPostId: String) {
-        mediaFeedLoadJob?.cancel()
-        mediaFeedLoadJob = viewModelScope.launch {
-            val cached = repository.cachedMediaFeed(anchorPostId)
-            mediaFeed.value = MediaFeedState(
-                anchorPostId = anchorPostId,
-                page = cached,
-                loading = true,
-                initialCacheTier = if (cached == null) null else "room",
-            )
-            cached?.let(::prefetchMediaPreviews)
-            try {
-                val page = repository.mediaFeed(anchorPostId, force = cached != null)
-                mediaFeed.value = mediaFeed.value.copy(
-                    page = page,
-                    loading = false,
-                    isOffline = false,
-                    initialCacheTier = mediaFeed.value.initialCacheTier ?: "network",
-                )
-                prefetchMediaPreviews(page)
-            } catch (cancelled: CancellationException) {
-                throw cancelled
-            } catch (error: Throwable) {
-                mediaFeed.value = mediaFeed.value.copy(
-                    loading = false,
-                    isOffline = cached != null,
-                    error = if (cached == null) error.message ?: "Unable to load media" else null,
-                )
-            }
-        }
-    }
-
     private fun loadPublicProfile(username: String) = profileController.loadPublicProfile(username)
 
     private fun seedProfileEditor() {
         val user = (client.session.value as? SessionState.SignedIn)?.user ?: return
         profileController.beginEditing(user)
-    }
-
-    private fun prefetchMediaPreviews(page: MediaFeedPage) {
-        mediaPreviewPrefetch?.cancel()
-        mediaPreviewPrefetch = viewModelScope.launch {
-            val requests = mediaPreviewPrefetchRequests(page)
-            requests.chunked(4).forEach { batch ->
-                coroutineScope {
-                    batch.forEach { request ->
-                        launch {
-                            bestEffort {
-                                client.mediaBytes(
-                                    request.url,
-                                    request.cacheKey,
-                                    videoPreview = request.videoPreview,
-                                    allowsExpensiveAccess = false,
-                                    allowsConstrainedAccess = false,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     private companion object {
@@ -1242,12 +1140,6 @@ private suspend fun bestEffort(block: suspend () -> Unit) {
     }
 }
 
-internal data class MediaPrefetchRequest(
-    val url: String,
-    val cacheKey: String,
-    val videoPreview: Boolean,
-)
-
 /**
  * A restored detail is removed only after a definitive post 404 and only when no durable/projected
  * post is available. Timeouts, TLS failures, offline launches, and deliberate deep links must keep
@@ -1263,26 +1155,6 @@ internal fun shouldRecoverRestoredPostDetail(
     detail.post == null &&
     detail.postNotFound &&
     !detail.loading
-
-internal fun mediaPreviewPrefetchRequests(
-    page: MediaFeedPage,
-    maxItems: Int = 8,
-    maxRequests: Int = 24,
-): List<MediaPrefetchRequest> = page.items.take(maxItems.coerceAtLeast(0)).flatMap { item ->
-    item.allMedia.mapIndexedNotNull { index, media ->
-        val url = if (media.isVideo) media.posterUrl else media.zoomUrl ?: media.url ?: media.posterUrl
-        val key = media.cacheKey ?: media.mediaId ?: "${item.postId}:$index"
-        url?.let {
-            MediaPrefetchRequest(
-                it,
-                if (media.isVideo) videoPosterCacheKey(key, media.posterUrl) else key,
-                media.isVideo,
-            )
-        }
-    }
-}
-    .distinctBy { it.videoPreview to it.cacheKey }
-    .take(maxRequests.coerceAtLeast(0))
 
 private fun PostTransitionPreview.toPostHeader() = PostHeader(
     postId = postId,

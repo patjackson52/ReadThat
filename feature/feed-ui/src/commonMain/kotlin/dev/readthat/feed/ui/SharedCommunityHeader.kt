@@ -75,7 +75,7 @@ typealias CommunityAvatarRenderer = @Composable (
     modifier: Modifier,
 ) -> Unit
 
-/** Canonical community chrome shared by the mature Android and Compose Multiplatform feeds. */
+/** Canonical community chrome shared by Android and iOS feeds. */
 @Composable
 fun SharedCommunityHeader(
     state: SharedCommunityHeaderState,

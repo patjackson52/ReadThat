@@ -30,11 +30,7 @@ class AndroidReadThatClientRuntime internal constructor(
     val client: ReadThatClient,
 )
 
-/**
- * Process-wide Android KMP client owner. Both the mature shell and the shared Compose host use this
- * registry, so Room, the memory/disk byte caches, TLS sessions and pooled HTTP connections are not
- * duplicated while UI migration is in progress.
- */
+/** Process-wide Android owner for Room, byte caches, TLS sessions and pooled HTTP connections. */
 object AndroidReadThatClientRegistry {
     private val lock = Any()
     private val processScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -84,10 +80,7 @@ object AndroidReadThatClientRegistry {
     private const val MIB = 1_048_576L
 }
 
-/**
- * Process-wide product analytics owner used by both the mature Android shell and shared Compose.
- * A single exporter means one engagement checkpoint, one Room FIFO and one authenticated client.
- */
+/** One process exporter means one engagement checkpoint, one Room FIFO and one client. */
 object AndroidReadThatProductAnalyticsRegistry {
     private val lock = Any()
     private var installed:

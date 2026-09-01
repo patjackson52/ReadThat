@@ -48,13 +48,13 @@ Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet 
 | | |
 |---|---|
 | Build | ✅ Android `assembleDebug` and iOS simulator Xcode build |
-| Tests | ✅ Android feature suites, Android+iOS KMP suites, Room 3/outbox tests, Android lint, an on-device API/image/video transport probe, and Workers-runtime integration scenarios |
+| Tests | ✅ Android+iOS KMP feature/client suites, Room 3/outbox tests, Android lint, an on-device API/image/video transport probe, and Workers-runtime integration scenarios |
 | Toolchain | AGP 9.3.2 · Kotlin 2.3.21 · Gradle 9.5 · JDK 17 |
 | SDK | **compileSdk/targetSdk 37**, minSdk 26 |
 | UI | Jetpack Compose (BOM 2026.08.00), Material 3 |
 | Web | React 19 + Vite PWA; cursor paging, IndexedDB cache/outbox, native view transitions, adaptive HLS, bounded segment prefetch |
 | Persistence | **Room 3.0.2 KMP + SQLite 2.7.0** — Room is the structured-data source of truth on Android and iOS |
-| Paging | **Paging 3.5.1 + `RemoteMediator` over Room 3** on Android; shared Room-first flows on iOS |
+| Paging | **Paging 3.5.1 + `RemoteMediator` over Room 3** in the shared Android/iOS controllers |
 | KMP | `:core:model`, `:core:data`, `:core:network`, `:core:client`, `:core:observability`, `:feature:app-ui`, and `:composeApp` compile for Android and iOS |
 | iOS | Compose Multiplatform UI, Keychain sessions, one HTTP/3-capable `URLSession`, AVPlayer HLS, PhotosUI, native sharing, and an AVAsset offline-download shim |
 | On-device | ✅ registration, live SDUI feed, post detail/comments, create/profile/settings verified on a physical Pixel 10 Pro |
@@ -63,20 +63,13 @@ Built as preparation for the Reddit *Mobile Design* interview, whose prep sheet 
 | Network | One pooled API/Coil/Media3 engine; API and Images verified over HTTP/3 on Pixel 10 Pro, Stream over HTTP/2 fallback |
 
 ```bash
-./gradlew :feature:feed:testDebugUnitTest      # SDUI + Room/Paging/outbox
-./gradlew :feature:comments:testDebugUnitTest  # normalized deep comments
-./gradlew :feature:search:testDebugUnitTest    # cached search + Paging mediator
-./gradlew :feature:communities:testDebugUnitTest # drawer L1/L2 + offline outboxes
-./gradlew :feature:community-detail:testDebugUnitTest # cached detail + membership outbox
-./gradlew :feature:mediafeed:testDebugUnitTest # media Room/Paging/cursor concurrency
-./gradlew :core:post:testDebugUnitTest         # shared optimistic vote/outbox races
 ./gradlew :core:model:allTests                 # Android, iOS, and JS
-./gradlew :core:client:allTests                # shared client contracts on Android and iOS
+./gradlew :core:client:allTests                # controllers/repositories on Android and iOS
+./gradlew :feature:app-ui:allTests             # shared application/UI contracts
 ./gradlew :core:data:testAndroidHostTest       # Room 3 DAO/outbox behavior
 ./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
 ./gradlew :flows:testDebugUnitTest             # standalone Flow patterns
-./gradlew :app:lintDebug :feature:feed:lintDebug :feature:comments:lintDebug \
-  :core:media:lintDebug # app lint also analyzes its Android-KMP dependency models
+./gradlew :app:lintDebug :core:media:lintDebug # Android host/native media lint
 ./gradlew :app:assembleDebug                    # APK
 ./gradlew installDebug               # to a device/emulator
 
@@ -106,43 +99,36 @@ caches images, and applies a quota-aware LRU only to immutable video segments.
 
 ## Modules
 
-| Module | What it is | Tests |
-|---|---|---|
-| **`:app`** | Thin composition root: navigation, auth/create/profile UI, backend adapters, WorkManager workers |
-| **`:feature:feed`** | SDUI feed UI/domain/data, ordered photo and promoted-media carousels, flattening, Paging 3, and synchronization policy |
-| **`:feature:comments`** | Typed post detail, normalized deeply nested comments, bounded L1 and Room L2 |
-| **`:feature:search`** | Reddit-style discovery, typeahead, section previews, tabbed Paging 3 results, and L1/Room L2 caches |
-| **`:feature:communities`** | Supported Reddit-style drawer, recent/community L1+Room L2 state, use cases, UDF, and offline creation/visit commands |
-| **`:feature:community-detail`** | Typed community chrome, avatar/rules/membership state, Room-first UDF, and a coalescing join/leave outbox above the reused SDUI ranked feed |
-| **`:feature:mediafeed`** | Typed image/gallery/video Pager, exact-anchor Room/Paging, horizontal gallery + vertical post snapping, zoom/chrome UI, and bounded prefetch |
+| Module | What it is |
+|---|---|
+| **`:app`** | Android APK host: process lifecycle, WorkManager scheduling, telemetry drains, and native cache/media initialization |
+| **`:feature:app-ui`** | Shared application coordinator: session shell, navigation, state restoration, and composition of feature screens |
+| **`:feature:*-ui`** | KMP feed, detail/comments, media feed, search, profile, creation, settings, community, auth, ad, and shell presentation |
 | **`:core:model`** | KMP auth/post/profile/settings/video-policy contracts and pure reducers |
 | **`:core:data`** | Room 3 KMP schema/DAOs for account-scoped feed/profiles/subreddits, settings, document caches, and durable outboxes |
 | **`:core:network`** | KMP request/cache contract; one Android HttpEngine/OkHttp pool or one iOS URLSession shared by API, images, and previews |
-| **`:core:client`** | Shared authenticated API, Room-first repositories, lifecycle ViewModel, mutation replay, and telemetry exporter |
+| **`:core:client`** | Shared authenticated API, Room-first repositories, MVVM controllers, mutation replay, and telemetry exporter |
+| **`:core:design`** | Shared Compose primitives and design tokens |
 | **`:core:media-acquisition`** | Shared photo/video/avatar selection policy plus bounded app-private Android staging |
 | **`:core:media-acquisition-ui`** | KMP picker/camera request lifecycle with Android Activity Result and iOS PhotosUI bridge implementations |
 | **`:core:sharing` / `:core:sharing-ui`** | Validated canonical share payload policy plus one KMP system-share capability with Android chooser and iOS host implementations |
 | **`:feature:ad-ui`** | Shared promoted-detail/media/telemetry UI plus HTTPS-only native WebView/WKWebView landing implementations |
-| **`:feature:app-ui`** | KMP application coordinator: session shell, lifecycle/deep-link handling, destination routing/system-Back policy, bounded per-destination saveable UI state, and composition of independently reusable feature screens |
 | **`:composeApp`** | Thin framework/binary host: Android process graph + saved-state adapter and iOS UIViewController entrypoint; no feature rendering |
 | **`:iosApp`** | SwiftUI/Xcode lifecycle host plus PhotosUI, share sheet, Keychain/AVPlayer integrations exported by the KMP framework |
 | **`:core:media`** | Media3 playback, ABR/data-saver policy, stable segment cache identity |
-| **`:core:post`** | Shared account-scoped optimistic post state and coalescing durable vote outbox |
 | **`:core:observability`** | KMP Android/iOS/browser performance event contract and monotonic timers |
 | **`:flows`** | [Standalone Kotlin Flow patterns](flows/README.md); intentionally outside the app graph |
 
-Features are vertical slices with `ui`, `domain`, and `data` packages. Core
-modules hold capabilities reused by multiple features, and `:app` wires the
-implementations together. `:feature:comments` remains navigation-agnostic:
-callbacks and identifiers are its boundary, so feed dwell-prefetch and detail
-share one retained repository without a feature-to-feature dependency.
-Search follows the same boundary: result selection emits a post, focused
-comment, community, or username identifier and the app owns navigation. See
+Feature UI modules are navigation-agnostic KMP presentation slices. They emit
+identifiers and intents to `:feature:app-ui`; shared controllers and repositories
+in `:core:client` own domain/data behavior, Room transactions, and outboxes.
+This keeps feed, detail/comments, search, community, and media behavior compiled
+once without creating feature-to-feature dependencies. See
 [`docs/SEARCH_ARCHITECTURE.md`](docs/SEARCH_ARCHITECTURE.md).
 
-`BackendClient` keeps access and refresh tokens encrypted under a non-exportable
-Android Keystore AES-GCM key and propagates D1 session bookmarks for read-your-
-writes consistency. Feed votes use an optimistic, coalescing Room outbox.
+`ReadThatClient` uses a platform secure session store (Android Keystore or iOS
+Keychain) and propagates D1 session bookmarks for read-your-writes consistency.
+Feed votes use an optimistic, coalescing Room outbox.
 Selected media is first copied off-main to process-safe staged files and an ordered Room
 post-outbox payload. WorkManager can then resume each upload and post creation after
 process death using stable idempotency keys. The Worker and client enforce the
@@ -168,7 +154,11 @@ and rules in the background, and inserts that typed chrome above the existing
 subreddit-scoped SDUI `FeedScreen`. Join/leave atomically updates both the page
 and drawer before a process-safe WorkManager outbox reconciles the server.
 
-⚠️ **`:feature:comments` is deliberately not SDUI.** Reddit's feed is server-driven; its post-detail screen is a recursive domain model. Knowing *where SDUI stops* — and why — is the more interesting answer. See [`comments/README.md`](comments/README.md). The focused case study, [“Counting What Disappears”](docs/HIDDEN_COMMENT_COUNTS.md), covers the UX and performance tradeoffs behind collapsed-thread counts.
+⚠️ **Comments are deliberately not SDUI.** Reddit's feed is server-driven; its
+post-detail screen is a recursive domain model. Knowing *where SDUI stops* — and
+why — is the more interesting answer. The focused case study,
+[“Counting What Disappears”](docs/HIDDEN_COMMENT_COUNTS.md), covers the UX and
+performance tradeoffs behind collapsed-thread counts.
 
 ---
 
@@ -198,21 +188,16 @@ The client never decides *what* to draw or *in what order* — the server does. 
 ## Layers
 
 ```
-:feature:feed/ui      Compose + FeedViewModel intents
-             /domain wire/UI models, converters, flattener (pure Kotlin)
-             /data   repository, sync engine, Room, RemoteMediator
-
-:feature:comments/ui      typed detail Compose + CommentsViewModel intents
-                 /domain iterative tree operations (pure Kotlin)
-                 /data   repository, bounded L1, normalized Room L2
-
-:core:network        process-wide HTTP engine and Coil/Media3 adapters
-:core:media          player, ABR policy, bounded segment cache
-:core:model          KMP contracts and reducers
-
-:app/data/backend    HTTP adapters, encrypted session, D1 bookmarks
-:app/data/sync       periodic refresh, vote drain, durable post upload
-:app/ui              root UDF/navigation plus auth/create/profile/settings
+:feature:app-ui      shared Compose application coordinator and navigation
+:feature:*-ui        reusable KMP feature screens and presentation adapters
+:core:client         shared ViewModel/controllers, API, repositories, outboxes
+:core:data           Room 3 schema, DAOs, Paging sources, durable state
+:core:network        process-wide HTTP engine and image/media adapters
+:core:media(-ui)     native players, ABR policy, bounded prefetch/cache
+:core:model          KMP contracts, converters, flattener, tree operations
+:composeApp          target entrypoints and process/scene graph lifetime
+:app                 Android packaging, workers, and lifecycle integrations
+:iosApp              SwiftUI lifecycle and narrow Apple capability shims
 ```
 
 The domain layer is still **pure functions over plain Kotlin data** — converters and the flattener need no emulator, no Robolectric and no mocking framework. The data layer is not, and is not pretended to be: the Room/Paging tests run under Robolectric against a real in-memory SQLite database, because `INSERT OR IGNORE`, transaction boundaries and `ORDER BY` are exactly the things a hand-written fake DAO lets you get wrong silently.
@@ -375,13 +360,11 @@ Named so you can answer "what would you add next?" rather than being caught out:
   injection. A larger product can generate the same graph with Dagger/Hilt
   without moving ownership back into feature code.
 - **No screenshot tests.** Converters being pure makes them cheap to add (Paparazzi at Reddit, Roborazzi elsewhere).
-- **The mature Android root is retained as a rollback reference.** The default
-  Android build launches the same KMP graph and `:feature:app-ui` surface as iOS
-  through the thin `:composeApp` host. Android-only Media3 engines, WorkManager,
-  system capabilities, and process lifecycle adapters remain native. Build with
-  `-PREADTHAT_USE_SHARED_APP=false` to exercise the compiled mature reference.
-  The shared secure store migrates and mirrors the legacy Keystore envelope, so
-  an explicit rollback build retains a usable refreshed session.
+- **There is one Android/iOS product root.** Android launches the same KMP graph
+  and `:feature:app-ui` surface as iOS through the thin `:composeApp` host.
+  Android-only Media3 engines, WorkManager, system capabilities, and process
+  lifecycle adapters remain native. Bounded compatibility readers preserve
+  sessions, settings, and pending outboxes created by earlier Android versions.
 - **No real diffing engine.** `LazyColumn` keys do the work here; Reddit's iOS side has an explicit snapshot-diffing stage.
 
 The backend, API contract, Cloudflare topology, consistency model, and live-app

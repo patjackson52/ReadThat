@@ -29,9 +29,6 @@ import dev.readthat.data.db.CommunityDrawerSyncEntity
 import dev.readthat.data.db.CommunityMembershipEntity
 import dev.readthat.data.db.CommunityVisitEntity
 import dev.readthat.data.db.CommunityVisitMutationEntity
-import dev.readthat.data.db.MediaFeedEntryEntity
-import dev.readthat.data.db.MediaFeedRemoteKeyEntity
-import dev.readthat.data.db.MediaPostContentEntity
 import dev.readthat.data.db.PendingCommunityMembershipEntity
 import dev.readthat.data.db.PendingPostEntity
 import dev.readthat.data.db.PendingSubredditEntity
@@ -72,8 +69,6 @@ import dev.readthat.shared.UserProfile
 import dev.readthat.shared.VoteSnapshot
 import dev.readthat.communitydetail.domain.CommunityDetail
 import dev.readthat.communitydetail.domain.CommunityRule
-import dev.readthat.mediafeed.domain.MediaFeedItem
-import dev.readthat.mediafeed.domain.MediaFeedPage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -236,7 +231,7 @@ class OfflineFirstRepository(
     private val database: AppDatabase,
     private val scope: CoroutineScope,
     private val api: ReadThatApi = ReadThatApi(client),
-    /** Stable host-owned identity used while a legacy shell still owns authentication state. */
+    /** Stable account scope for native workers and destination-scoped controllers. */
     private val accountIdOverride: String? = null,
     /** Android schedules WorkManager immediately after the durable local vote commit. */
     private val onVoteQueued: () -> Unit = {},
@@ -675,9 +670,8 @@ class OfflineFirstRepository(
     }
 
     /**
-     * Captures the Room ordering and continuation cursor in one transaction for the native media
-     * pager. This is shared with the mature Android shell so a feed-to-video transition never
-     * reconstructs ranking from an in-memory UI snapshot.
+     * Captures Room ordering and the continuation cursor in one transaction so the shared media
+     * pager never reconstructs ranking from an in-memory UI snapshot.
      */
     suspend fun mediaLaunchContext(
         feedId: String,
@@ -1424,48 +1418,6 @@ class OfflineFirstRepository(
         syncPendingMemberships()
     }
 
-    suspend fun mediaFeed(anchorPostId: String, force: Boolean = false): MediaFeedPage {
-        val key = "media-feed:$anchorPostId"
-        val cached = cachedMediaFeed(anchorPostId)
-        if (!force && cached != null) {
-            seedMediaPostStates(cached.items)
-            return cached
-        }
-        return try {
-            api.mediaFeed(anchorPostId = anchorPostId).also { page ->
-                putDocument(key, json.encodeToString(page))
-                commitMediaFeed(key, page, refresh = true)
-            }
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (error: Throwable) {
-            if (force) throw error
-            cached ?: throw error
-        }
-    }
-
-    suspend fun cachedMediaFeed(anchorPostId: String): MediaFeedPage? =
-        getDocument("media-feed:$anchorPostId")
-
-    suspend fun appendMediaFeed(anchorPostId: String, current: MediaFeedPage): MediaFeedPage {
-        val cursor = current.nextCursor ?: return current
-        return try {
-            val next = api.mediaFeed(cursor = cursor, anchorPostId = anchorPostId)
-            val merged = current.copy(
-                items = (current.items + next.items).distinctBy(MediaFeedItem::postId),
-                nextCursor = next.nextCursor,
-            )
-            val key = "media-feed:$anchorPostId"
-            putDocument(key, json.encodeToString(merged))
-            commitMediaFeed(key, next, refresh = false)
-            merged
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (_: Throwable) {
-            current
-        }
-    }
-
     suspend fun updateSettings(transform: (AppSettings) -> AppSettings) {
         val updated = transform(settings.value)
         database.appSettingsDao().upsert(updated.toEntity(platformEpochMillis()))
@@ -1690,56 +1642,10 @@ class OfflineFirstRepository(
             post
         }
 
-    private suspend fun commitMediaFeed(feedId: String, page: MediaFeedPage, refresh: Boolean) {
-        val account = accountScope()
-        database.withWriteTransaction {
-            val dao = database.mediaFeedDao()
-            if (refresh) {
-                dao.clearEntries(account, feedId)
-                dao.clearRemoteKey(account, feedId)
-            }
-            val first = if (refresh) 0L else dao.maxPosition(account, feedId) + 1L
-            dao.upsertContent(page.items.map { item ->
-                MediaPostContentEntity(account, item.postId, json.encodeToString(item), platformEpochMillis())
-            })
-            dao.upsertEntries(page.items.mapIndexed { index, item ->
-                MediaFeedEntryEntity(account, feedId, item.postId, first + index)
-            })
-            dao.putRemoteKey(MediaFeedRemoteKeyEntity(account, feedId, page.nextCursor, platformEpochMillis()))
-            page.items.forEach { item ->
-                feedDao.seedStateIfAbsent(
-                    item.postId,
-                    item.score,
-                    item.viewerVote == 1,
-                    item.viewerVote == -1,
-                    account,
-                )
-            }
-            dao.pruneOldEntries(account, feedId)
-            dao.pruneOldRemoteKeys(account, feedId)
-            dao.pruneUnreferencedContent(account)
-        }
-    }
-
     private suspend fun putDocument(key: String, payload: String) {
         val account = accountScope()
         documents.upsert(CachedDocumentEntity(account, key, payload, platformEpochMillis()))
         documents.pruneToLimit(account, MAX_CACHED_DOCUMENTS)
-    }
-
-    private suspend fun seedMediaPostStates(items: List<MediaFeedItem>) {
-        val account = accountScope()
-        database.withWriteTransaction {
-            items.forEach { item ->
-                feedDao.seedStateIfAbsent(
-                    item.postId,
-                    item.score,
-                    item.viewerVote == 1,
-                    item.viewerVote == -1,
-                    account,
-                )
-            }
-        }
     }
 
     private suspend fun updateCachedPostVote(postId: String, score: Int, viewerVote: Int) {

@@ -21,21 +21,23 @@ The feed remains server-driven UI. Search results and post detail are typed
 domain models because their interaction and navigation contracts are stable and
 client-owned.
 
-## Android data path
+## Shared client data path
 
 ```text
-Compose intent -> SearchViewModel -> SearchRepository -> SearchRemoteSource
-       ^                  |                 |
-       |                  v                 v
+Compose intent -> SharedSearchController -> SharedSearchRepository -> ReadThatClient
+       ^                    |                       |
+       |                    v                       v
  PagingData/StateFlow <- Room paging source <- transactional page + cursor
 ```
 
-`:feature:search` is a vertical Gradle feature with `ui`, `domain`, and `data`
-packages. It depends on shared Room capability, while the app composition root
-provides the backend adapter and navigation callbacks. The ViewModel exposes a
-single immutable state and explicit intents. It cancels superseded `All`
-requests and validates the request key before applying a response, so a slow
-old query cannot overwrite a newer one.
+`:feature:search-ui` owns reusable Compose presentation and emits navigation
+callbacks. `:core:client` owns the lifecycle-agnostic search controller,
+repository, API adapter, cache policy, and Paging mediator; `:core:data` owns the
+Room tables and DAOs. `ReadThatViewModel` retains the controller for the active
+destination. The controller exposes one immutable state plus explicit intents,
+cancels superseded `All` requests, and validates the request key before applying
+a response, so a slow old query cannot overwrite a newer one. This exact path
+compiles for Android and iOS.
 
 The repository provides two structured-data cache tiers:
 
@@ -86,9 +88,9 @@ contain thumbnails/dimensions instead of full detail payloads.
 
 Worker integration tests cover trigger-indexed content, all result sections,
 stable multi-page cursors, focused comment permalinks, private-community
-non-disclosure, and viewer-bound cursor rejection. Android tests cover recent
-query normalization/reactivity, L1 plus Room L2 snapshots, and multi-page
-`RemoteMediator` append ordering.
+non-disclosure, and viewer-bound cursor rejection. KMP and Android-host tests
+cover recent-query normalization/reactivity, L1 plus Room L2 snapshots, and
+multi-page `RemoteMediator` append ordering.
 
 The deployed D1 query plan uses the FTS virtual-table index followed by primary
 key lookups for the source rows and membership. On the current small production

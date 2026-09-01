@@ -454,7 +454,7 @@ object CacheScope {
     const val LEGACY_ACCOUNT_ID = "legacy-unscoped"
     const val HOME_FEED_ID = "feed:home"
 
-    /** One durable Paging/Room namespace per community, matching the mature Android feed ids. */
+    /** One durable Paging/Room namespace per community across both mobile clients. */
     fun communityFeedId(name: String): String =
         "feed:subreddit:${name.trim().removePrefix("r/").lowercase()}"
 }

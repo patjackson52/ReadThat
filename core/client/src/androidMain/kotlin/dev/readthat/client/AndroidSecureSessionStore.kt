@@ -16,10 +16,9 @@ import kotlinx.serialization.json.Json
 /**
  * AES-GCM session storage backed by non-exportable Android Keystore keys.
  *
- * The mature Android app shipped [LEGACY_PREFERENCES] and [LEGACY_KEY_ALIAS] before the KMP
- * client existed. Keeping a bounded compatibility window here lets the shared client become the
- * production host without signing users out. New values are mirrored to the legacy envelope so a
- * rollback build can still authenticate; logout and account reset clear both stores.
+ * Pre-KMP Android releases shipped [LEGACY_PREFERENCES] and [LEGACY_KEY_ALIAS]. The shared client
+ * reads that envelope once and promotes it without signing the user out. New writes target only
+ * the current store; logout and account reset clear both stores during the compatibility window.
  */
 class AndroidSecureSessionStore internal constructor(
     private val current: AndroidSessionEnvelopeStore,
@@ -51,9 +50,6 @@ class AndroidSecureSessionStore internal constructor(
 
     override suspend fun writeSession(session: StoredSession) {
         current.writeSessionEnvelope(encode(current, session))
-        // A compatibility mirror makes a rollback safe. The primary write is authoritative;
-        // inability to update an obsolete alias must not fail a successful token refresh.
-        runCatching { legacy.writeSessionEnvelope(encode(legacy, session)) }
     }
 
     override suspend fun clearSession() {
@@ -70,7 +66,6 @@ class AndroidSecureSessionStore internal constructor(
 
     override suspend fun writeBookmark(value: String) {
         current.writeBookmark(value)
-        runCatching { legacy.writeBookmark(value) }
     }
 
     override suspend fun clearBookmark() {

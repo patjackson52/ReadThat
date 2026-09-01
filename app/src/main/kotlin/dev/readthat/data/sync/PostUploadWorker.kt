@@ -20,19 +20,6 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.serialization.Serializable
-
-@Serializable
-internal data class PendingMediaUpload(
-    val name: String,
-    val contentType: String,
-    val localPath: String,
-    val byteSize: Long,
-    val width: Int? = null,
-    val height: Int? = null,
-    val durationSeconds: Int? = null,
-    val remoteMediaId: String? = null,
-)
 
 object PostUploadScheduler {
     const val KEY_MUTATION_ID = "mutation_id"

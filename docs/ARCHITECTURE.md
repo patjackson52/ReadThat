@@ -5,77 +5,49 @@ Android and iOS clients use feature-oriented Gradle modules, layered MVVM,
 unidirectional data flow, a memory-plus-disk cache for structured data, and
 durable writes. Room 3, shared repositories/ViewModels, and the Compose
 Multiplatform surface form both product implementations. Android `:app` remains
-the packaging and native-scheduler host, while its established feature UI is a
-compiled reference and explicit rollback path rather than the default renderer.
+the packaging, process-lifecycle, and native-scheduler host; all product UI is
+composed by the same KMP application root used on iOS.
 The feed is server-driven; post detail and comments remain typed domain UI.
 
 ## Gradle module graph
 
 ```text
-:app  (composition root, navigation, native worker scheduling, legacy references)
- |
- +-- :feature:feed --------> :feature:feed-ui (KMP presentation)
- |        |                  :core:data (Room schema/DAOs)
- |        +----------------> :core:image-ui + :core:media-ui
- |
- +-- :feature:comments ----> :feature:detail-ui (KMP presentation)
- |        +----------------> :core:image-ui + :core:media-ui
- |
- +-- :feature:profile -----> :feature:profile-ui + :core:image-ui
- |
- +-- :feature:search ------> :feature:search-ui + :core:data
- |
- +-- :feature:communities -> :core:model + :core:data
- |
- +-- :feature:community-detail -> :feature:community-ui + :core:data
- |
- +-- :feature:mediafeed -----> :feature:mediafeed-ui + :core:data
- |                              + :core:image-ui + :core:media-ui
- |
- +-- :feature:ad-ui ---------> shared promoted detail + native secure landing actuals
- |
- +-- :core:data
- +-- :core:network
- +-- :core:navigation -----> shared destinations + bounded/versioned restoration
- +-- :core:media ----------> :core:model + :core:network
- +-- :core:media-ui -------> platform Media3/AVPlayer engines
- +-- :core:image-ui -------> platform Coil/shared-byte decoders
- +-- :core:media-acquisition -> shared selection/size/MIME policy + Android staging
- +-- :core:media-acquisition-ui -> shared picker/camera lifecycle + platform launchers
- +-- :core:sharing --------> typed text/subject/MIME payload policy
- +-- :core:sharing-ui -----> shared presentation contract + Android/iOS native actuals
- +-- :core:post -----------> :core:data + :core:model + :core:observability
- +-- :core:observability (KMP event contract used by app/features/network/media)
+:app (Android APK, WorkManager, lifecycle, native cache/media setup)
+  -> :composeApp (target entrypoint and process graph)
 
-:iosApp -> :composeApp (thin framework host)
-              +-- :feature:app-ui (KMP application coordinator)
-                    +-- :feature:*-ui (KMP screens)
-                    +-- :feature:shell-ui (KMP IA/scaffold)
-                    +-- :core:image-ui + :core:media-ui
-                    +-- :core:media-acquisition + :core:media-acquisition-ui
-                    +-- :core:sharing + :core:sharing-ui
-                    +-- :core:navigation
-                    +-- :core:client (shared MVVM/repositories)
-                          +-- :core:data (Room 3 KMP)
-                          +-- :core:network
-                          +-- :core:observability
+:iosApp (SwiftUI lifecycle and narrow Apple shims)
+  -> :composeApp (static framework and scene graph)
+
+:composeApp
+  -> :feature:app-ui (KMP application coordinator/navigation)
+       +-- :feature:feed-ui + :feature:detail-ui + :feature:mediafeed-ui
+       +-- :feature:search-ui + :feature:profile-ui + :feature:community-ui
+       +-- :feature:creation-ui + :feature:settings-ui + :feature:auth-ui
+       +-- :feature:ad-ui + :feature:shell-ui
+       +-- :core:design + :core:image-ui + :core:media-ui
+       +-- :core:media-acquisition-ui + :core:sharing-ui
+       +-- :core:navigation
+       +-- :core:client (shared MVVM controllers/repositories)
+             +-- :core:data (Room 3 KMP)
+             +-- :core:network (one pooled target transport)
+             +-- :core:model + :core:deeplink
+             +-- :core:observability
+
+Native capabilities remain modular:
+  :core:media, :core:media-ui, :core:image-ui
+  :core:media-acquisition, :core:media-acquisition-ui
+  :core:sharing, :core:sharing-ui
 
 :flows is a standalone teaching/test module and is not on the app graph.
 ```
 
 Android `:app` remains the packaging, WorkManager, and process-lifecycle host,
-but its default product surface is the same `:feature:app-ui` coordinator used
-by iOS. `:composeApp` contains only target entrypoints, graph lifetime, and the
-Android saved-state adapter. The mature Android root and feature implementations
-remain compiled as a reference and explicit rollback path selected with
-`-PREADTHAT_USE_SHARED_APP=false`; they are no longer the default renderer.
-Feature modules own their
-vertical slice and use `ui`, `domain`, and `data` packages; `:core:data` owns shared Room schema and
-DAOs, while other core modules contain capabilities that
-are reused by two or more features. This keeps feature builds independent
-without creating tiny modules for every layer. When the codebase grows, split a
-feature's implementation into `:feature:x:api` and `:feature:x:impl` only after
-there is a real cross-feature API or build-parallelism benefit.
+and its product surface is the same `:feature:app-ui` coordinator used by iOS.
+`:composeApp` contains only target entrypoints, graph lifetime, and the Android
+saved-state adapter. Feature UI modules own reusable KMP presentation; shared
+behavior and data live in `:core:client`, while `:core:data` owns the Room schema
+and DAOs. This keeps feature builds independent without duplicating UI/domain/data
+stacks by platform or creating tiny modules for every layer.
 
 Shared Android settings live in the included `build-logic` build, and dependency
 versions have a single owner in `gradle/libs.versions.toml`. Gradle configuration
@@ -102,8 +74,8 @@ The same feature-owned adapter boundary now covers home-feed account chrome,
 detail/comment identity images, search thumbnails, profile avatars/editing, and
 community-detail avatars. Hosts inject only a shared-client byte loader on iOS.
 `:core:media-acquisition-ui` owns the common picker/camera request lifecycle and
-its Android Activity Result and iOS PhotosUI-bridge actuals, so mature Android
-and `:feature:app-ui` no longer register separate launchers. `:core:media-acquisition`
+its Android Activity Result and iOS PhotosUI-bridge actuals, so platform hosts
+do not register product-specific launchers. `:core:media-acquisition`
 owns the selection bounds, byte limits,
 MIME rules, optional pixel-dimension bounds, validation, and Android app-private
 staging used by post creation and profile editing. Its dedicated avatar policy
@@ -120,8 +92,8 @@ independently of either native picker. Likewise,
 `:core:sharing` owns typed text, subject, MIME, canonical post-link, and safe promoted-link
 payloads. `:core:sharing-ui` owns the Compose capability used by both application roots;
 its Android actual presents the system chooser and its iOS actual signals the Swift host's
-`UIActivityViewController`. The mature Android feed now consumes the shared group title and
-canonical payload rather than constructing raw post IDs or unvalidated ad links.
+`UIActivityViewController`. Feed UI consumes the shared group title and canonical
+payload rather than constructing raw post IDs or unvalidated ad links.
 
 Performance definitions, percentile SLOs, Analytics Engine schema/queries, and
 the observability runbook are in
@@ -161,16 +133,11 @@ actions such as feed votes write both visible local state and an outbox in one
 transaction; a worker reconciles the result. Compose collects lifecycle-aware
 flows and does not maintain a second mutable copy of repository data.
 
-The retained mature Android root delegates authentication and settings to the same
-KMP controllers used by `ReadThatViewModel`; it retains only host bridges for
-legacy header snapshots and Android background-work resumption. Both hosts
-restore the cached account first and model startup as state rather than
-navigation side effects. Product destinations, bounded history, validation, and
+Both hosts restore the cached account first and model startup as state rather
+than navigation side effects. Product destinations, bounded history, validation, and
 the versioned opaque restoration codec live in `:core:navigation`. The shared
 Android host stores that payload in `SavedStateHandle`; iOS stores the identical
-payload per scene with `@SceneStorage`. The mature reference host retains typed
-Navigation Compose routes, but a tested lossless adapter maps every route and
-navigation action to the same shared contract. `AppNavigationPolicy` owns the
+payload per scene with `@SceneStorage`. `AppNavigationPolicy` owns the
 canonical Home/Create/Activity/Profile order, persistent-root behavior, bottom
 navigation and community-drawer visibility, detail/immersive chrome, community
 name normalization, and deep-link-to-destination conversion. Platform hosts
@@ -272,20 +239,17 @@ uses iterative preorder traversal and decoding is iterative bottom-up, so a
 deep thread does not consume the call stack. The memory cache is bounded and
 thread-safe instead of retaining every visited post for the process lifetime.
 
-Profile editing is a feature module with callback-only boundaries into the app
-composition root. Android's system photo picker grants access to one selected
+Profile editing is shared feature UI with callback-only boundaries into the app
+coordinator. Android's system photo picker grants access to one selected
 image without storage permissions. The app streams a size-bounded no-backup
 staging file through the shared transport, then publishes only the resulting
 owned media ID. D1 stores that ID rather than an expiring CDN URL; the public,
 versioned avatar endpoint rotates the private Images signature while preserving
-Coil memory/disk cache identity. The previous bitmap/staging editor remains a
-compiled `LegacyAndroidProfileEditor` reference, but it is no longer constructed
-by the Android root and therefore cannot create alternate profile state.
+Coil memory/disk cache identity.
 
 Post resharing from feed, detail, thread, and MediaFeed also stays inside the
-shared repository/client graph. Android's mature shell supplies only the native
-share intent and snackbar; it does not create a second backend connection pool
-for those actions.
+shared repository/client graph. The Android target actual supplies only the
+native share intent; it does not create a second backend connection pool.
 
 ## Fast startup and background refresh
 
@@ -459,13 +423,15 @@ publish.
 
 ```bash
 ./gradlew :core:model:allTests
-./gradlew :feature:comments:testDebugUnitTest \
-  :feature:feed:testDebugUnitTest \
-  :feature:search:testDebugUnitTest \
-  :app:assembleDebug
-./gradlew :app:lintDebug :feature:feed:lintDebug \
-  :feature:comments:lintDebug :feature:profile:lintDebug :feature:search:lintDebug :core:data:lintDebug \
-  :core:network:lintDebug :core:media:lintDebug
+./gradlew :core:client:allTests :feature:app-ui:allTests
+./gradlew :core:data:testAndroidHostTest
+./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug
+./gradlew :composeApp:linkDebugFrameworkIosSimulatorArm64
+
+cd iosApp
+xcodegen generate
+xcodebuild -project ReadThat.xcodeproj -scheme ReadThat \
+  -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 
 cd backend
 npm test

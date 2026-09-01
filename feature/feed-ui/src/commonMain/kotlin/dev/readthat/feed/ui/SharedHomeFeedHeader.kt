@@ -48,7 +48,7 @@ typealias SharedFeedAvatarRenderer = @Composable (
     modifier: Modifier,
 ) -> Unit
 
-/** Canonical home-feed chrome shared by the mature Android shell and Compose Multiplatform. */
+/** Canonical home-feed chrome shared by Android and iOS. */
 @Composable
 fun SharedHomeFeedHeader(
     account: SharedFeedAccount?,

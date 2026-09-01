@@ -9,7 +9,7 @@ class AndroidSecureSessionStoreTest {
     private val session = StoredSession("session", "access", "refresh", 10L, 20L)
 
     @Test
-    fun `legacy session and bookmark migrate without clearing rollback envelope`() = runTest {
+    fun `legacy session and bookmark migrate without risking source data`() = runTest {
         val current = PlaintextEnvelopeStore()
         val legacy = PlaintextEnvelopeStore().apply {
             sessionEnvelope = sessionJson(session)
@@ -34,7 +34,7 @@ class AndroidSecureSessionStoreTest {
     }
 
     @Test
-    fun `writes and clears both stores for upgrade and rollback safety`() = runTest {
+    fun `new writes use current storage while logout clears legacy data`() = runTest {
         val current = PlaintextEnvelopeStore()
         val legacy = PlaintextEnvelopeStore()
         val store = AndroidSecureSessionStore(current, legacy)
@@ -42,9 +42,9 @@ class AndroidSecureSessionStoreTest {
         store.writeSession(session)
         store.writeBookmark("bookmark")
         assertEquals(sessionJson(session), current.sessionEnvelope)
-        assertEquals(sessionJson(session), legacy.sessionEnvelope)
+        assertNull(legacy.sessionEnvelope)
         assertEquals("bookmark", current.bookmark)
-        assertEquals("bookmark", legacy.bookmark)
+        assertNull(legacy.bookmark)
 
         store.clearSession()
         store.clearBookmark()

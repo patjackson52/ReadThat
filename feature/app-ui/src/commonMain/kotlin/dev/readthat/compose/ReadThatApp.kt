@@ -387,7 +387,7 @@ private fun AppScaffold(
         contentWindowInsets = when {
             immersiveDestination -> WindowInsets(0, 0, 0, 0)
             // SharedPostDetailScreen owns the bottom inset inside its fixed composer bar,
-            // matching the mature Android edge-to-edge host. Keep top/cutout handling here.
+            // matching the Android edge-to-edge host. Keep top/cutout handling here.
             state.destination is AppDestination.PostDetail -> WindowInsets.safeDrawing.only(
                 WindowInsetsSides.Horizontal + WindowInsetsSides.Top,
             )

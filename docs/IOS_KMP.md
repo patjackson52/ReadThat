@@ -30,13 +30,11 @@ iosApp (SwiftUI lifecycle, signing, native pick/share/HLS shims)
 
 The same `feature:app-ui`, KMP `feature:*-ui`, `core:client`, `core:data`,
 `core:network`, `core:image-ui`, `core:media-ui`, `core:navigation`, and model
-code compile for Android and iOS. The shared coordinator is now the default
-Android application surface as well as the iOS surface. Mature Android feature
-modules remain compiled as a visual, behavioral, and rollback reference; build
-with `-PREADTHAT_USE_SHARED_APP=false` to select that root explicitly. Their
-feed, MediaFeed, detail/comments, search, profile, community, and ad references
-consume the promoted shared UI or image/media contracts and use the same Room
-schema, domain models, and process-wide Android transport.
+code compile for Android and iOS. The shared coordinator is the only product
+surface on both platforms. Feed, MediaFeed, detail/comments, search, profile,
+community, and ad presentation use the same Room schema, domain models, and
+shared UI contracts, with target-specific image/media engines behind narrow
+interfaces.
 
 The feed-cell platform adapter and the post-detail media gallery now live in
 their KMP feature modules rather than being repeated in the Android and
@@ -72,11 +70,9 @@ while Swift only turns the iOS actual's notification into `UIActivityViewControl
 
 The normal `./gradlew :app:assembleDebug` build makes the Android application
 host the same `AndroidReadThatGraph`, lifecycle ViewModel, and `feature:app-ui`
-surface through the thin `composeApp` entrypoint. The shared path is the strict
-default; only the exact value `-PREADTHAT_USE_SHARED_APP=false` selects the
-retained mature reference. Android session tokens and the consistency
-bookmark migrate from the established Keystore envelope and are dual-written
-during this transition so upgrade and rollback remain authenticated.
+surface through the thin `composeApp` entrypoint. Android session tokens and the
+consistency bookmark migrate once from the earlier Keystore envelope; current
+writes use the shared store while logout clears both formats.
 
 ## Source of truth and cache tiers
 
@@ -164,8 +160,8 @@ both targets: open post/comments, reshare, native share, and community
 navigation. Community chrome owns its refresh, creation, and membership
 overflow policy in the same KMP feature module; hosts no longer render inert
 more-buttons or decide which actions exist.
-Promoted-video completion exposes the same replay and CTA affordances
-as the mature Android UI; replay seeks the leased native player instead of
+Promoted-video completion exposes the same replay and CTA affordances on both
+platforms; replay seeks the leased native player instead of
 constructing another decoder.
 
 The shared host lifecycle is also part of the media contract: backgrounding
@@ -215,8 +211,8 @@ an intentional in-session or deep-link navigation is never auto-dismissed.
 Within a running scene, `:feature:app-ui` supplies stable destination keys to a
 shared `SaveableStateHolder`: persistent IA roots are pinned and twelve
 transient destinations are retained by LRU. Back therefore restores feed,
-community, detail/comment, search, and pager position like the mature Android
-Navigation Compose stack, while old local UI state is bounded independently of
+community, detail/comment, search, and pager position consistently on Android
+and iOS, while old local UI state is bounded independently of
 Room/controller state. A narrow target actual connects non-Home destinations to
 Android system/predictive Back. On iOS, one native left-edge pan recognizer
 offers a request only after crossing its completion threshold and only while the
@@ -260,9 +256,8 @@ Platform shims are deliberately narrow:
 The remaining platform boundary is narrow native orchestration rather than
 product policy or feature rendering. Android `:app` owns WorkManager
 constraints/backoff and process lifecycle callbacks, while target actuals own
-native system share presentation. The retained mature reference still compiles
-its thin `AppViewModel` and typed Navigation Compose back stack. Picker presentation and
-lifecycle now enter through the same KMP UI-capability module in both roots. Picker validation,
+native system share presentation. Picker presentation and lifecycle enter
+through the same KMP UI-capability module on both targets. Picker validation,
 staging policy, post share payloads, authentication,
 settings (including root theme and media policy), profile mutation, post
 resharing, and background maintenance already enter shared KMP
@@ -273,22 +268,17 @@ vote replay, community visit/membership replay, post/community creation, and
 telemetry flushing execute through the shared client/repository graph.
 `SharedCreationOutboxProcessor` also owns retry classification and mutation
 telemetry on both targets, serializes UI and background post publication, and
-decodes older mature-Android pending-media rows so installed outboxes survive
+decodes older Android pending-media rows so installed outboxes survive
 the migration.
-The former Android-only profile editor is isolated as an uninstantiated compiled
-reference instead of being part of root application state.
 Navigation meaning is no longer duplicated: every active
-Android action enters through `AppDestination`, every restored typed route maps
-back losslessly, and shell IA is selected from that shared destination. The
+action enters through `AppDestination`, restoration maps back losslessly, and
+shell IA is selected from that shared destination. The
 shared Android/iOS surface uses the same KMP snapshot codec with
-`SavedStateHandle`/`@SceneStorage`, while the mature reference keeps native route
-serialization as its compiled reference and rollback path. Native capability
+`SavedStateHandle`/`@SceneStorage`. Native capability
 presentation now enters through small KMP capability or feature modules; target
 actuals retain only OS presentation and engine code. The remaining host edges
 stay native until shared contracts can replace their orchestration without
-weakening background work. Legacy Android screen implementations remain
-compiled for reference and rollback testing; they are not alternate data
-sources and are not the default product surface.
+weakening background work.
 
 ## Build and configuration
 
