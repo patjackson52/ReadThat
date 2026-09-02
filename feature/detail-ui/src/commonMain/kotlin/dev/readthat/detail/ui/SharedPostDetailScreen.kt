@@ -87,6 +87,7 @@ import androidx.compose.ui.window.DialogProperties
 import dev.readthat.comments.domain.CommentFlattener
 import dev.readthat.comments.domain.CommentRenderList
 import dev.readthat.comments.domain.CommentRow
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.PostHeader
 import dev.readthat.core.ui.markdown.MarkdownText
 import dev.readthat.core.ui.markdown.markdownPlainText
@@ -122,6 +123,7 @@ fun SharedPostDetailScreen(
     onVoteComment: (commentId: String, value: Int) -> Unit,
     onVotePost: (Int) -> Unit,
     onCreateComment: (parentId: String?, body: String) -> Unit,
+    onCommentSortChanged: (CommentSort) -> Unit,
     onClearError: () -> Unit,
     imageRenderer: DetailImageRenderer,
     mediaRenderer: DetailMediaRenderer,
@@ -140,19 +142,20 @@ fun SharedPostDetailScreen(
     val postIdentity = state.header?.postId ?: state.transitionPreview?.postId
     var reshareOpen by remember(postIdentity) { mutableStateOf(false) }
     var reshareTarget by remember(postIdentity) { mutableStateOf("") }
-    var commentSort by remember(postIdentity) { mutableStateOf(CommentSort.Best) }
     var commentSearchOpen by remember(postIdentity) { mutableStateOf(false) }
     var commentSearchQuery by remember(postIdentity) { mutableStateOf("") }
     var activeSearchMatch by remember(postIdentity) { mutableStateOf(0) }
     val commentListState = rememberLazyListState()
     val interactionScope = rememberCoroutineScope()
-    val presentedRows = remember(state.render.rows, commentSort) {
-        sortedCommentRows(state.render.rows, commentSort)
-    }
+    val presentedRows = state.render.rows
     val searchMatches = remember(presentedRows, commentSearchQuery) {
         commentSearchMatchIndices(presentedRows, commentSearchQuery)
     }
     val latestRows by rememberUpdatedState(presentedRows)
+
+    LaunchedEffect(state.commentSort) {
+        commentListState.scrollToItem(0)
+    }
 
     LaunchedEffect(commentSearchOpen, commentSearchQuery, searchMatches) {
         activeSearchMatch = 0
@@ -195,7 +198,7 @@ fun SharedPostDetailScreen(
                 searchQuery = commentSearchQuery,
                 searchMatchCount = searchMatches.size,
                 activeSearchMatch = activeSearchMatch,
-                commentSort = commentSort,
+                commentSort = state.commentSort,
                 communityName = state.header?.subreddit,
                 onOpenSearch = {
                     toolbarInteraction("comment_search_open") { commentSearchOpen = true }
@@ -212,7 +215,7 @@ fun SharedPostDetailScreen(
                     toolbarInteraction("comment_search_next") { moveSearchMatch(1) }
                 },
                 onCommentSortChanged = { sort ->
-                    toolbarInteraction("comment_sort") { commentSort = sort }
+                    toolbarInteraction("comment_sort") { onCommentSortChanged(sort) }
                 },
                 onSharePost = onSharePost,
                 onCommunityClick = onCommunityClick,
@@ -1364,44 +1367,6 @@ private fun Modifier.threadRails(renderDepth: Int): Modifier {
 }
 
 private fun indentFor(depth: Int) = (depth.coerceAtMost(MAX_INDENT_LEVELS) * INDENT_UNIT_DP).dp
-
-private data class RootCommentThread(
-    val originalIndex: Int,
-    val rows: List<CommentRow>,
-) {
-    val root: CommentRow.Comment? get() = rows.firstOrNull() as? CommentRow.Comment
-}
-
-/**
- * Sorts only root threads so descendants, load-more cursors, and continue-thread affordances stay
- * attached to their parent. `Best` deliberately preserves the server/Room order exactly.
- */
-internal fun sortedCommentRows(rows: List<CommentRow>, sort: CommentSort): List<CommentRow> {
-    if (sort == CommentSort.Best || rows.size < 2) return rows
-    val threads = buildList {
-        var current = mutableListOf<CommentRow>()
-        rows.forEach { row ->
-            if (row.renderDepth == 0 && current.isNotEmpty()) {
-                add(RootCommentThread(size, current))
-                current = mutableListOf()
-            }
-            current += row
-        }
-        if (current.isNotEmpty()) add(RootCommentThread(size, current))
-    }
-    val comparator = when (sort) {
-        CommentSort.Best -> compareBy<RootCommentThread> { it.originalIndex }
-        CommentSort.Top -> compareByDescending<RootCommentThread> { it.root?.score ?: Int.MIN_VALUE }
-            .thenBy { it.originalIndex }
-        CommentSort.Newest -> compareBy<RootCommentThread> {
-            it.root?.createdAgoMinutes ?: Int.MAX_VALUE
-        }.thenBy { it.originalIndex }
-        CommentSort.Oldest -> compareByDescending<RootCommentThread> {
-            it.root?.createdAgoMinutes ?: Int.MIN_VALUE
-        }.thenBy { it.originalIndex }
-    }
-    return threads.sortedWith(comparator).flatMap(RootCommentThread::rows)
-}
 
 internal fun commentSearchMatchIndices(rows: List<CommentRow>, query: String): List<Int> {
     val normalized = query.trim()

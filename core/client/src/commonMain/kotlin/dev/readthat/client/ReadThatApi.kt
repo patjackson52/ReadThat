@@ -1,6 +1,7 @@
 package dev.readthat.client
 
 import dev.readthat.comments.domain.CommentNode
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.CommentTree
 import dev.readthat.comments.domain.LoadMoreResponse
 import dev.readthat.comments.domain.RawComment
@@ -104,12 +105,14 @@ class ReadThatApi(private val client: ReadThatClient) {
         depth: Int = 10,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
     ): CommentTree {
         require(rootCommentId == null || focusCommentId == null) {
             "Choose either a rooted or focused comment view"
         }
         val path = buildString {
             append("/v1/posts/${encodePathSegment(postId)}/comments?count=$count&depth=$depth")
+            append("&sort=${sort.wireValue}")
             rootCommentId?.let { append("&rootCommentId=").append(encodePathSegment(it)) }
             focusCommentId?.let { append("&focusCommentId=").append(encodePathSegment(it)) }
         }
@@ -124,6 +127,7 @@ class ReadThatApi(private val client: ReadThatClient) {
                 put("childIds", buildJsonArray { cursor.childIds.forEach { add(JsonPrimitive(it)) } })
                 put("limit", limit)
                 put("maxDepth", 10)
+                put("sort", cursor.sort.wireValue)
             },
         )
         val value = client.json.decodeFromJsonElement<ApiLoadMoreEnvelope>(response)
@@ -499,8 +503,9 @@ private data class ApiCommentTree(
     val roots: List<ApiCommentNode>,
     val requestedCount: Int,
     val requestedDepth: Int,
+    val sort: CommentSort = CommentSort.Best,
 ) {
-    fun toDomain() = CommentTree(postId, roots.map(ApiCommentNode::toDomain), requestedCount, requestedDepth)
+    fun toDomain() = CommentTree(postId, roots.map(ApiCommentNode::toDomain), requestedCount, requestedDepth, sort)
 }
 
 @Serializable private sealed interface ApiCommentNode {
@@ -543,8 +548,9 @@ private data class ApiLoadMore(
     val parentId: String?,
     val remainingCount: Int,
     val childIds: List<String> = emptyList(),
+    val sort: CommentSort = CommentSort.Best,
 ) : ApiCommentNode {
-    override fun toDomain() = CommentNode.LoadMore(id, parentId, remainingCount, childIds)
+    override fun toDomain() = CommentNode.LoadMore(id, parentId, remainingCount, childIds, sort)
 }
 
 @Serializable

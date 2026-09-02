@@ -1,6 +1,7 @@
 package dev.readthat.comments
 
 import dev.readthat.comments.domain.CommentNode
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.CommentTree
 import dev.readthat.comments.domain.CommentTreeMerger
 import kotlin.test.Test
@@ -39,5 +40,16 @@ class MergerCollapseSplitTest {
     fun `first merge with no existing tree auto-collapses nothing`() {
         val result = CommentTreeMerger.merge(null, tree(c("a", c("a1"))))
         assertEquals(emptySet<String>(), result.autoCollapsedIds)
+    }
+
+    @Test
+    fun `trees from different sorts replace instead of preserving the previous root order`() {
+        val best = tree(c("best-first"), c("top-first"))
+        val top = tree(c("top-first"), c("best-first")).copy(sort = CommentSort.Top)
+
+        val result = CommentTreeMerger.merge(best, top)
+
+        assertEquals(top, result.tree)
+        assertEquals(emptySet(), result.autoCollapsedIds)
     }
 }

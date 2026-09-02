@@ -22,6 +22,7 @@ import dev.readthat.client.CommentLoadState
 import dev.readthat.client.DetailState
 import dev.readthat.client.SharedDetailUiState
 import dev.readthat.comments.domain.CommentRenderList
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.PostHeader
 import dev.readthat.comments.domain.PostMedia
 import dev.readthat.shared.PostTransitionPreview
@@ -30,13 +31,15 @@ enum class DetailLoadMoreState { Loading, Error }
 
 enum class DetailPresentation { FullScreen, MediaBottomSheet }
 
-/** Root-thread ordering; replies remain attached to their parent in server order. */
-enum class CommentSort(val label: String) {
-    Best("Best"),
-    Top("Top"),
-    Newest("Newest"),
-    Oldest("Oldest"),
-}
+internal val CommentSort.label: String
+    get() = when (this) {
+        CommentSort.Best -> "Best"
+        CommentSort.Top -> "Top"
+        CommentSort.Qa -> "Q&A"
+        CommentSort.Controversial -> "Controversial"
+        CommentSort.New -> "New"
+        CommentSort.Old -> "Old"
+    }
 
 @Immutable
 data class DetailCommunityHeader(
@@ -49,6 +52,7 @@ data class DetailCommunityHeader(
 @Immutable
 data class DetailUiState(
     val render: CommentRenderList = CommentRenderList(emptyList(), 0, 0),
+    val commentSort: CommentSort = CommentSort.Best,
     val header: PostHeader? = null,
     val transitionPreview: PostTransitionPreview? = null,
     val loadMoreStates: Map<String, DetailLoadMoreState> = emptyMap(),
@@ -72,6 +76,7 @@ fun DetailState.toDetailUiState(
     transitionPreview: PostTransitionPreview? = null,
 ): DetailUiState = DetailUiState(
     render = render,
+    commentSort = commentSort,
     header = post,
     transitionPreview = transitionPreview,
     loadMoreStates = commentLoadStates.mapValues { (_, state) ->

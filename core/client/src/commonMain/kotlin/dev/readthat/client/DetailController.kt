@@ -2,6 +2,7 @@ package dev.readthat.client
 
 import dev.readthat.comments.domain.CommentNode
 import dev.readthat.comments.domain.CommentRow
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.CommentTree
 import dev.readthat.comments.domain.CommentTreeEditor
 import dev.readthat.communitydetail.domain.CommunityDetail
@@ -45,6 +46,36 @@ internal class DetailController(
         rootCommentId: String? = null,
         focusedCommentId: String? = null,
         projectedHeader: PostHeader? = null,
+    ) = openInternal(
+        postId = postId,
+        rootCommentId = rootCommentId,
+        focusedCommentId = focusedCommentId,
+        projectedHeader = projectedHeader,
+        sort = CommentSort.Best,
+        previous = null,
+    )
+
+    fun selectCommentSort(sort: CommentSort) {
+        val current = state.value
+        val postId = current.postId ?: return
+        if (sort == current.commentSort) return
+        openInternal(
+            postId = postId,
+            rootCommentId = current.rootCommentId,
+            focusedCommentId = current.focusedCommentId,
+            projectedHeader = current.post,
+            sort = sort,
+            previous = current,
+        )
+    }
+
+    private fun openInternal(
+        postId: String,
+        rootCommentId: String?,
+        focusedCommentId: String?,
+        projectedHeader: PostHeader?,
+        sort: CommentSort,
+        previous: DetailState?,
     ) {
         require(postId.isNotBlank())
         require(rootCommentId == null || focusedCommentId == null) {
@@ -53,11 +84,20 @@ internal class DetailController(
         observation?.cancel()
         generation += 1L
         val activeGeneration = generation
-        state.value = DetailState(
+        val refreshChrome = previous == null
+        state.value = previous?.copy(
+            commentSort = sort,
+            autoCollapsedCommentIds = emptySet(),
+            commentLoadStates = emptyMap(),
+            initialCacheTier = null,
+            refreshingComments = true,
+            error = null,
+        ) ?: DetailState(
             postId = postId,
             post = projectedHeader,
             rootCommentId = rootCommentId,
             focusedCommentId = focusedCommentId,
+            commentSort = sort,
         )
         observation = scope.launch {
             var loadedCommunityName: String? = null
@@ -81,9 +121,9 @@ internal class DetailController(
             }
 
             projectedHeader?.let { launch { repository.persistPostHeader(it) } }
-            projectedHeader?.subreddit?.let { launch { loadCommunityHeader(it) } }
+            if (refreshChrome) projectedHeader?.subreddit?.let { launch { loadCommunityHeader(it) } }
 
-            repository.cachedComments(postId, rootCommentId, focusedCommentId)?.let { cached ->
+            repository.cachedComments(postId, rootCommentId, focusedCommentId, sort)?.let { cached ->
                 commentsWereCached = true
                 updateIfCurrent(activeGeneration) {
                     copy(comments = cached, initialCacheTier = "room")
@@ -96,47 +136,60 @@ internal class DetailController(
                     if (post != null || state.value.post == null) {
                         state.value = state.value.copy(post = post)
                     }
-                    post?.subreddit?.let { subreddit -> launch { loadCommunityHeader(subreddit) } }
+                    if (refreshChrome) {
+                        post?.subreddit?.let { subreddit -> launch { loadCommunityHeader(subreddit) } }
+                    }
                 }
             }
             launch {
-                repository.observeComments(postId, rootCommentId, focusedCommentId).collect { comments ->
+                repository.observeComments(postId, rootCommentId, focusedCommentId, sort).collect { comments ->
                     if (generation != activeGeneration) return@collect
-                    state.value = state.value.copy(
-                        comments = comments,
-                        initialCacheTier = state.value.initialCacheTier ?: comments?.let {
-                            if (commentsWereCached) "room" else "network"
-                        },
-                    )
+                    // While changing sort, retain the previous ranked tree until
+                    // the new sort has actual cached or network content to show.
+                    if (comments != null || state.value.comments?.sort == sort) {
+                        state.value = state.value.copy(
+                            comments = comments,
+                            initialCacheTier = state.value.initialCacheTier ?: comments?.let {
+                                if (commentsWereCached) "room" else "network"
+                            },
+                        )
+                    }
                 }
             }
             updateIfCurrent(activeGeneration) {
-                copy(loading = true, refreshingComments = true, error = null)
+                copy(loading = refreshChrome, refreshingComments = true, error = null)
+            }
+            if (refreshChrome) {
+                launch {
+                    try {
+                        repository.refreshPost(postId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (error: Throwable) {
+                        updateIfCurrent(activeGeneration) {
+                            copy(
+                                postNotFound = error is ReadThatHttpException && error.status == 404,
+                                error = error.message ?: "Unable to refresh post",
+                            )
+                        }
+                    } finally {
+                        updateIfCurrent(activeGeneration) { copy(loading = false) }
+                    }
+                }
             }
             launch {
                 try {
-                    repository.refreshPost(postId)
+                    repository.refreshComments(postId, rootCommentId, focusedCommentId, sort)
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (error: Throwable) {
                     updateIfCurrent(activeGeneration) {
                         copy(
-                            postNotFound = error is ReadThatHttpException && error.status == 404,
-                            error = error.message ?: "Unable to refresh post",
+                            // A sort switch deliberately keeps the old tree painted. If the new
+                            // tree cannot be loaded, keep the control truthful about that content.
+                            commentSort = comments?.sort ?: sort,
+                            error = error.message ?: "Unable to refresh comments",
                         )
-                    }
-                } finally {
-                    updateIfCurrent(activeGeneration) { copy(loading = false) }
-                }
-            }
-            launch {
-                try {
-                    repository.refreshComments(postId, rootCommentId, focusedCommentId)
-                } catch (cancelled: CancellationException) {
-                    throw cancelled
-                } catch (error: Throwable) {
-                    updateIfCurrent(activeGeneration) {
-                        copy(error = error.message ?: "Unable to refresh comments")
                     }
                 } finally {
                     updateIfCurrent(activeGeneration) { copy(refreshingComments = false) }
@@ -188,6 +241,7 @@ internal class DetailController(
         if (postId.isBlank() || body.isEmpty() || state.value.submittingComment) return@launch
         val pendingId = platformMutationId("pending-comment")
         val parentId = state.value.replyingToId ?: state.value.rootCommentId
+        val sort = state.value.commentSort
         val originalCount = state.value.post?.commentCount
         state.value = state.value.copy(
             commentDraft = "",
@@ -209,7 +263,8 @@ internal class DetailController(
                 body,
                 state.value.rootCommentId,
                 state.value.focusedCommentId,
-                pendingId,
+                sort = sort,
+                pendingId = pendingId,
             )
             state.value = state.value.copy(submittingComment = false)
         } catch (cancelled: CancellationException) {
@@ -245,6 +300,7 @@ internal class DetailController(
                     cursorId,
                     state.value.rootCommentId,
                     state.value.focusedCommentId,
+                    current.commentSort,
                 )
                 state.value = state.value.copy(
                     commentLoadStates = state.value.commentLoadStates - cursorId,
@@ -341,6 +397,7 @@ internal class DetailController(
                     value,
                     state.value.rootCommentId,
                     state.value.focusedCommentId,
+                    tree.sort,
                 )
             }
         } catch (cancelled: CancellationException) {

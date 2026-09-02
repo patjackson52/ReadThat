@@ -1,6 +1,7 @@
 package dev.readthat.detail.ui
 
 import dev.readthat.comments.domain.CommentRow
+import dev.readthat.comments.domain.CommentSort
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -44,23 +45,11 @@ class CommentPresentationTest {
     }
 
     @Test
-    fun rootThreadSortingKeepsEveryDescendantAttached() {
-        val rows = listOf(
-            comment("older-low", 0, score = 2, ageMinutes = 90),
-            comment("older-child", 1, score = 99, ageMinutes = 80),
-            comment("newer-top", 0, score = 40, ageMinutes = 5),
-            comment("newer-child", 1, score = 1, ageMinutes = 4),
-        )
-
+    fun sortLabelsCoverEveryServerAuthoredOrder() {
         assertEquals(
-            listOf("newer-top", "newer-child", "older-low", "older-child"),
-            sortedCommentRows(rows, CommentSort.Top).map(CommentRow::key),
+            listOf("Best", "Top", "Q&A", "Controversial", "New", "Old"),
+            CommentSort.entries.map { it.label },
         )
-        assertEquals(
-            listOf("newer-top", "newer-child", "older-low", "older-child"),
-            sortedCommentRows(rows, CommentSort.Newest).map(CommentRow::key),
-        )
-        assertEquals(rows, sortedCommentRows(rows, CommentSort.Best))
     }
 
     @Test

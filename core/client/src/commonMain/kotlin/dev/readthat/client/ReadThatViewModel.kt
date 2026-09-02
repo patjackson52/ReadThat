@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import androidx.paging.flatMap
 import dev.readthat.comments.domain.CommentFlattener
 import dev.readthat.comments.domain.CommentNode
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.communities.domain.CommunityDrawerSnapshot
 import dev.readthat.communitydetail.domain.CommunityDetail
 import dev.readthat.data.db.AppDatabase
@@ -926,6 +927,8 @@ class ReadThatViewModel(
     fun replyTo(commentId: String?) = detailController.replyTo(commentId)
 
     fun toggleCommentCollapsed(commentId: String) = detailController.toggleCommentCollapsed(commentId)
+
+    fun selectCommentSort(sort: CommentSort) = detailController.selectCommentSort(sort)
 
     fun submitComment(postId: String) = detailController.submitComment(postId)
 

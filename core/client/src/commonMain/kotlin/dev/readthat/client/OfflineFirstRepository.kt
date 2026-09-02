@@ -10,6 +10,7 @@ import androidx.paging.RemoteMediator
 import androidx.paging.flatMap
 import androidx.room3.withWriteTransaction
 import dev.readthat.comments.domain.CommentNode
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.comments.domain.CommentTree
 import dev.readthat.comments.domain.CommentTreeEditor
 import dev.readthat.comments.domain.CommentTreeMerger
@@ -113,6 +114,7 @@ data class DetailState(
     val postId: String? = null,
     val post: PostHeader? = null,
     val comments: CommentTree? = null,
+    val commentSort: CommentSort = CommentSort.Best,
     val community: CommunityDetail? = null,
     val communityMembershipChanging: Boolean = false,
     val rootCommentId: String? = null,
@@ -711,8 +713,9 @@ class OfflineFirstRepository(
         postId: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
     ): Flow<CommentTree?> =
-        documents.observe(accountScope(), commentsKey(postId, rootCommentId, focusCommentId)).map { row ->
+        documents.observe(accountScope(), commentsKey(postId, rootCommentId, focusCommentId, sort)).map { row ->
             row?.payloadJson?.let { runCatching { json.decodeFromString<CommentTree>(it) }.getOrNull() }
         }
 
@@ -720,7 +723,8 @@ class OfflineFirstRepository(
         postId: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
-    ): CommentTree? = getDocument(commentsKey(postId, rootCommentId, focusCommentId))
+        sort: CommentSort = CommentSort.Best,
+    ): CommentTree? = getDocument(commentsKey(postId, rootCommentId, focusCommentId, sort))
 
     fun observePendingPost(mutationId: String): Flow<PendingPostEntity?> =
         database.postOutboxDao().observe(mutationId)
@@ -747,9 +751,9 @@ class OfflineFirstRepository(
      */
     suspend fun prefetchComments(postId: String) {
         require(postId.isNotBlank())
-        val key = commentsKey(postId)
+        val key = commentsKey(postId, sort = CommentSort.Best)
         if (getDocument<CommentTree>(key) != null) return
-        val initial = initialComments(postId)
+        val initial = initialComments(postId, CommentSort.Best)
         val latest = getDocument<CommentTree>(key)
         val merged = CommentTreeMerger.merge(latest, initial).tree
         putDocument(key, json.encodeToString(merged))
@@ -760,11 +764,12 @@ class OfflineFirstRepository(
         postId: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
     ): CommentTree {
         require(rootCommentId == null || focusCommentId == null) {
             "A comment view cannot be both rooted and focused"
         }
-        val key = commentsKey(postId, rootCommentId, focusCommentId)
+        val key = commentsKey(postId, rootCommentId, focusCommentId, sort)
         if (rootCommentId != null || focusCommentId != null) {
             val timer = performanceTimer()
             return api.comments(
@@ -772,6 +777,7 @@ class OfflineFirstRepository(
                 count = 200,
                 rootCommentId = rootCommentId,
                 focusCommentId = focusCommentId,
+                sort = sort,
             ).also {
                 putDocument(key, json.encodeToString(it))
                 PerformanceTelemetry.duration(
@@ -787,16 +793,18 @@ class OfflineFirstRepository(
         }
         val cached = getDocument<CommentTree>(key)
         val initialTimer = performanceTimer()
-        val initial = cached ?: initialComments(postId)
+        val initial = cached ?: initialComments(postId, sort)
         val first = CommentTreeMerger.merge(cached, initial).tree
         putDocument(key, json.encodeToString(first))
         PerformanceTelemetry.duration(
             PerformanceMetric.COMMENTS_INITIAL_FETCH, initialTimer, PerformanceSurface.DETAIL,
-            attributes = mapOf("cache_tier" to if (cached == null) "network" else "room"),
+            attributes = mapOf(
+                "cache_tier" to if (cached == null) "network" else "room",
+            ),
         )
         val fullTimer = performanceTimer()
         return try {
-            val full = api.comments(postId, count = 200)
+            val full = api.comments(postId, count = 200, sort = sort)
             CommentTreeMerger.merge(first, full).tree.also {
                 putDocument(key, json.encodeToString(it))
                 PerformanceTelemetry.duration(
@@ -815,16 +823,17 @@ class OfflineFirstRepository(
         cursor: CommentNode.LoadMore,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = cursor.sort,
     ): CommentTree? {
-        val key = commentsKey(postId, rootCommentId, focusCommentId)
+        val key = commentsKey(postId, rootCommentId, focusCommentId, sort)
         val current = getDocument<CommentTree>(key) ?: return null
         val merged = CommentTreeSplicer.splice(current, cursor.id, api.loadMore(postId, cursor))
         putDocument(key, json.encodeToString(merged))
         return merged
     }
 
-    private suspend fun initialComments(postId: String): CommentTree {
-        val requestKey = "${accountScope()}:$postId"
+    private suspend fun initialComments(postId: String, sort: CommentSort): CommentTree {
+        val requestKey = "${accountScope()}:$postId:${sort.wireValue}"
         val (request, owner) = initialCommentRequestMutex.withLock {
             initialCommentRequests[requestKey]?.let { existing -> existing to false }
                 ?: CompletableDeferred<CommentTree>().let { created ->
@@ -834,7 +843,7 @@ class OfflineFirstRepository(
         }
         if (owner) {
             try {
-                request.complete(api.comments(postId, count = 8))
+                request.complete(api.comments(postId, count = 8, sort = sort))
             } catch (error: Throwable) {
                 request.completeExceptionally(error)
             } finally {
@@ -856,9 +865,10 @@ class OfflineFirstRepository(
         body: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
         pendingId: String = platformMutationId("pending-comment"),
     ): CommentTree? {
-        val key = commentsKey(postId, rootCommentId, focusCommentId)
+        val key = commentsKey(postId, rootCommentId, focusCommentId, sort)
         val current = getDocument<CommentTree>(key)
         val localParentId = parentId.takeUnless { rootCommentId != null && it == rootCommentId }
         val pending = CommentNode.Comment(
@@ -886,7 +896,7 @@ class OfflineFirstRepository(
                 descendantCount = created.descendantCount,
             )
             val latest = getDocument<CommentTree>(key)
-                ?: return refreshComments(postId, rootCommentId, focusCommentId)
+                ?: return refreshComments(postId, rootCommentId, focusCommentId, sort)
             latest.copy(roots = CommentTreeEditor.replace(latest.roots, pendingId, node)).also {
                 putDocument(key, json.encodeToString(it))
             }
@@ -909,11 +919,12 @@ class OfflineFirstRepository(
         value: Int,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
     ): CommentTree {
         val result = api.voteComment(commentId, value)
-        val key = commentsKey(postId, rootCommentId, focusCommentId)
+        val key = commentsKey(postId, rootCommentId, focusCommentId, sort)
         val current = getDocument<CommentTree>(key)
-            ?: return refreshComments(postId, rootCommentId, focusCommentId)
+            ?: return refreshComments(postId, rootCommentId, focusCommentId, sort)
         return current.copy(
             roots = CommentTreeEditor.updateVote(current.roots, commentId, result.value, result.score),
         ).also { putDocument(key, json.encodeToString(it)) }
@@ -926,10 +937,11 @@ class OfflineFirstRepository(
         cursorId: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
+        sort: CommentSort = CommentSort.Best,
     ): CommentTree? {
-        val current = getDocument<CommentTree>(commentsKey(postId, rootCommentId, focusCommentId)) ?: return null
+        val current = getDocument<CommentTree>(commentsKey(postId, rootCommentId, focusCommentId, sort)) ?: return null
         val cursor = findCommentCursor(current.roots, cursorId) ?: return current
-        return loadMoreComments(postId, cursor, rootCommentId, focusCommentId)
+        return loadMoreComments(postId, cursor, rootCommentId, focusCommentId, sort)
     }
 
     suspend fun search(request: SearchRequest, cursor: String? = null): SearchPage {
@@ -1676,11 +1688,8 @@ class OfflineFirstRepository(
         id: String,
         rootCommentId: String? = null,
         focusCommentId: String? = null,
-    ) = when {
-        focusCommentId != null -> "comments:$id:focus:$focusCommentId"
-        rootCommentId != null -> "comments:$id:root:$rootCommentId"
-        else -> "comments:$id"
-    }
+        sort: CommentSort = CommentSort.Best,
+    ) = commentDocumentKey(id, rootCommentId, focusCommentId, sort)
 
     private companion object {
         const val FEED_FRESH_MS = SHARED_FEED_FRESH_MILLIS
@@ -1690,6 +1699,17 @@ class OfflineFirstRepository(
         const val MAX_REPORTED_DROPPED_CELL_IDENTITIES = 1_024
         const val DOCUMENT_RETENTION_MS = 30L * 24 * 60 * 60 * 1_000
     }
+}
+
+internal fun commentDocumentKey(
+    postId: String,
+    rootCommentId: String? = null,
+    focusCommentId: String? = null,
+    sort: CommentSort = CommentSort.Best,
+): String = when {
+    focusCommentId != null -> "comments:v2:$postId:${sort.wireValue}:focus:$focusCommentId"
+    rootCommentId != null -> "comments:v2:$postId:${sort.wireValue}:root:$rootCommentId"
+    else -> "comments:v2:$postId:${sort.wireValue}"
 }
 
 internal const val SHARED_FEED_PAGE_SIZE = 20

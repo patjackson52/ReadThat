@@ -251,12 +251,15 @@ export interface CommentNode {
   pending?: boolean;
 }
 
+export type CommentSort = "best" | "top" | "qa" | "controversial" | "new" | "old";
+
 export interface LoadMoreNode {
   type: "load_more";
   id: string;
   parentId: string | null;
   remainingCount: number;
   childIds: string[];
+  sort: CommentSort;
 }
 
 export type TreeNode = CommentNode | LoadMoreNode;
@@ -265,7 +268,7 @@ export interface CommentTree {
   roots: TreeNode[];
   requestedCount: number;
   requestedDepth: number;
-  sort: "best";
+  sort: CommentSort;
   corpusTruncated: boolean;
   cacheStatus: "hit" | "miss";
 }

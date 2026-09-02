@@ -5,6 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import dev.readthat.comments.domain.CommentSort
 import dev.readthat.image.ui.PlatformImage
 import dev.readthat.image.ui.PlatformImageByteLoader
 import dev.readthat.image.ui.PlatformImageKind
@@ -24,6 +25,7 @@ fun SharedPlatformPostDetailScreen(
     onVoteComment: (commentId: String, value: Int) -> Unit,
     onVotePost: (Int) -> Unit,
     onCreateComment: (parentId: String?, body: String) -> Unit,
+    onCommentSortChanged: (CommentSort) -> Unit,
     onClearError: () -> Unit,
     mediaRenderer: DetailMediaRenderer,
     imageByteLoader: PlatformImageByteLoader? = null,
@@ -48,6 +50,7 @@ fun SharedPlatformPostDetailScreen(
         onVoteComment = onVoteComment,
         onVotePost = onVotePost,
         onCreateComment = onCreateComment,
+        onCommentSortChanged = onCommentSortChanged,
         onClearError = onClearError,
         imageRenderer = { url, cacheKey, description, imageModifier ->
             PlatformImage(

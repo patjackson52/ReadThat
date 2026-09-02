@@ -37,7 +37,14 @@ describe("comment tree updates", () => {
     { id: "root", parentId: null, author: "u/root", body: "Root", score: 3, viewerVote: 0 as const, createdAt: 1, createdAgoMin: 1, descendantCount: 4 },
     { id: "child", parentId: "root", author: "u/child", body: "Child", score: 2, viewerVote: 0 as const, createdAt: 2, createdAgoMin: 1, descendantCount: 0 },
   ];
-  const cursor: LoadMoreNode = { type: "load_more", id: "more", parentId: "root", remainingCount: 2, childIds: ["later"] };
+  const cursor: LoadMoreNode = {
+    type: "load_more",
+    id: "more",
+    parentId: "root",
+    remainingCount: 2,
+    childIds: ["later"],
+    sort: "best",
+  };
 
   it("reconstructs nesting and attaches branch cursors", () => {
     const tree = loadedTree(comments, [cursor]);

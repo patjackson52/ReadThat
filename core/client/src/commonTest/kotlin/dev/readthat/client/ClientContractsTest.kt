@@ -1,5 +1,6 @@
 package dev.readthat.client
 
+import dev.readthat.comments.domain.CommentSort
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -58,5 +59,21 @@ class ClientContractsTest {
 
         assertNull(store.readSession())
         assertNull(store.readBookmark())
+    }
+
+    @Test
+    fun commentDocumentKeysIsolateEverySortAndThreadShape() {
+        val rootKeys = CommentSort.entries.map { commentDocumentKey("post-1", sort = it) }
+
+        assertEquals(CommentSort.entries.size, rootKeys.toSet().size)
+        assertEquals("comments:v2:post-1:best", commentDocumentKey("post-1"))
+        assertEquals(
+            "comments:v2:post-1:top:root:comment-1",
+            commentDocumentKey("post-1", rootCommentId = "comment-1", sort = CommentSort.Top),
+        )
+        assertEquals(
+            "comments:v2:post-1:qa:focus:comment-2",
+            commentDocumentKey("post-1", focusCommentId = "comment-2", sort = CommentSort.Qa),
+        )
     }
 }

@@ -8,6 +8,7 @@ import {
 import type {
   ApiErrorBody,
   AuthState,
+  CommentSort,
   CommentTree,
   CommunityDrawer,
   FeedPage,
@@ -147,21 +148,25 @@ export class ApiClient {
     return (await this.request<{ post: Post }>(`/v1/posts/${encodeURIComponent(id)}`)).post;
   }
 
-  async comments(postId: string, focusCommentId?: string): Promise<CommentTree> {
-    const parameters = new URLSearchParams({ count: "100", depth: "10" });
+  async comments(
+    postId: string,
+    focusCommentId?: string,
+    sort: CommentSort = "best",
+  ): Promise<CommentTree> {
+    const parameters = new URLSearchParams({ count: "100", depth: "10", sort });
     if (focusCommentId) parameters.set("focusCommentId", focusCommentId);
     return this.request<CommentTree>(
       `/v1/posts/${encodeURIComponent(postId)}/comments?${parameters.toString()}`,
     );
   }
 
-  async loadMoreComments(postId: string, childIds: string[]): Promise<{
+  async loadMoreComments(postId: string, childIds: string[], sort: CommentSort): Promise<{
     comments: Array<Omit<import("./types").CommentNode, "type" | "children"> & { parentId: string | null }>;
     cursors: import("./types").LoadMoreNode[];
   }> {
     return this.request(`/v1/posts/${encodeURIComponent(postId)}/comments/more`, {
       method: "POST",
-      body: JSON.stringify({ childIds, limit: 100, maxDepth: 10 }),
+      body: JSON.stringify({ childIds, limit: 100, maxDepth: 10, sort }),
     });
   }
 

@@ -3,6 +3,27 @@ package dev.readthat.comments.domain
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@Serializable
+enum class CommentSort(val wireValue: String) {
+    @SerialName("best")
+    Best("best"),
+
+    @SerialName("top")
+    Top("top"),
+
+    @SerialName("qa")
+    Qa("qa"),
+
+    @SerialName("controversial")
+    Controversial("controversial"),
+
+    @SerialName("new")
+    New("new"),
+
+    @SerialName("old")
+    Old("old"),
+}
+
 /**
  * WIRE MODEL for the post-detail screen.
  *
@@ -71,6 +92,7 @@ sealed interface CommentNode {
         val parentId: String?,
         val remainingCount: Int,
         val childIds: List<String> = emptyList(),
+        val sort: CommentSort = CommentSort.Best,
     ) : CommentNode
 }
 
@@ -81,6 +103,8 @@ data class CommentTree(
     /** Echoed back so the client can tell which tree size it received. */
     val requestedCount: Int,
     val requestedDepth: Int,
+    /** Server-authored ordering; also scopes local caches, continuations, and phase merges. */
+    val sort: CommentSort = CommentSort.Best,
 ) {
     /** Total Comment nodes (excluding LoadMore cursors), for assertions and telemetry. */
     val commentCount: Int get() = countComments(roots)

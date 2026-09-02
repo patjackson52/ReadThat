@@ -726,6 +726,7 @@ private fun DetailScreen(
             viewModel.setCommentDraft(body)
             viewModel.submitComment(postId)
         },
+        onCommentSortChanged = viewModel::selectCommentSort,
         onClearError = viewModel::clearDetailError,
         mediaRenderer = { mediaItems, stableCacheKey, mediaModifier ->
             SharedPostDetailMediaGallery(

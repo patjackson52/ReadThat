@@ -415,8 +415,8 @@ latest `X-D1-Bookmark` response header on later requests.
 | `POST /v1/posts/:id/reshare` | Crosspost/reshare |
 | `PUT /v1/posts/:id/vote` | Set vote to `-1`, `0`, or `1` |
 | `POST /v1/posts/:id/comments` | Create root or nested comment |
-| `GET /v1/posts/:id/comments` | Best-first recursive tree |
-| `POST /v1/posts/:id/comments/more` | Flat parent-linked continuation |
+| `GET /v1/posts/:id/comments` | Recursive tree; `sort=best|top|qa|controversial|new|old` |
+| `POST /v1/posts/:id/comments/more` | Sort-aware flat parent-linked continuation |
 | `PUT /v1/comments/:id/vote` | Set comment vote |
 | `GET /v1/feed` | Personalized SDUI groups/cells |
 | `GET /v1/feeds/media` | Typed media-only ranked page; optional exact first-page anchor and signed viewer-bound cursor |

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ApiError, api } from "./api";
 import { useApp } from "./app-context";
@@ -7,7 +7,7 @@ import { commentPermalink, focusedCommentId } from "./deep-links";
 import { collapsedCommentCountLabel, loadedTree, postGroup, replaceCursor, updateNode } from "./logic";
 import { PostCard } from "./post-card";
 import { setSocialMetadata } from "./social";
-import type { CommentNode, CommentTree, LoadMoreNode, Post, TreeNode, VoteValue } from "./types";
+import type { CommentNode, CommentSort, CommentTree, LoadMoreNode, Post, TreeNode, VoteValue } from "./types";
 import { EmptyState, formatCount, formatRelative, Icon, Spinner } from "./ui";
 
 interface DetailCache { post: Post; comments: CommentTree }
@@ -117,27 +117,47 @@ export function PostPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
-  const cacheKey = `detail:${auth?.user.id ?? "anonymous"}:${postId}:${focusedId ?? "root"}`;
+  const [sort, setSort] = useState<CommentSort>("best");
+  const conversationIdentity = `${postId}:${focusedId ?? "root"}`;
+  const previousConversation = useRef<string | null>(null);
+  const postRef = useRef<Post | null>(null);
+  const appliedSort = useRef<CommentSort>("best");
+  const cacheKey = `detail:v2:${auth?.user.id ?? "anonymous"}:${conversationIdentity}:${sort}`;
+
+  useEffect(() => { postRef.current = post; }, [post]);
 
   useEffect(() => {
     let live = true;
-    setLoading(true); setError(null); setPost(null); setTree(null); setFromCache(false);
+    const conversationChanged = previousConversation.current !== conversationIdentity;
+    previousConversation.current = conversationIdentity;
+    setLoading(true); setError(null); setFromCache(false);
+    if (conversationChanged) { setPost(null); setTree(null); }
     void readCache<DetailCache>(cacheKey).then((cached) => {
       if (!live || !cached) return;
+      appliedSort.current = cached.value.comments.sort;
       setPost(cached.value.post); setTree(cached.value.comments); setFromCache(true); setLoading(false);
     }).finally(async () => {
       if (!live || !online) return;
       try {
-        const [nextPost, nextTree] = await Promise.all([api.post(postId), api.comments(postId, focusedId)]);
+        const currentPost = postRef.current?.id === postId ? postRef.current : null;
+        const [nextPost, nextTree] = await Promise.all([
+          currentPost ? Promise.resolve(currentPost) : api.post(postId),
+          api.comments(postId, focusedId, sort),
+        ]);
         if (!live) return;
+        appliedSort.current = nextTree.sort;
         setPost(nextPost); setTree(nextTree); setFromCache(false); setLoading(false);
         await writeCache<DetailCache>(cacheKey, { post: nextPost, comments: nextTree });
       } catch (caught) {
-        if (live) { setError(caught instanceof ApiError ? caught.message : "Post could not be loaded"); setLoading(false); }
+        if (live) {
+          setSort(appliedSort.current);
+          setError(caught instanceof ApiError ? caught.message : "Post could not be loaded");
+          setLoading(false);
+        }
       }
     });
     return () => { live = false; };
-  }, [cacheKey, focusedId, online, postId]);
+  }, [cacheKey, conversationIdentity, focusedId, online, postId, sort]);
 
   useEffect(() => {
     if (!tree || !focusedId) return;
@@ -164,7 +184,7 @@ export function PostPage() {
     setTree((current) => current ? { ...current, roots: updateNode(current.roots, id, update) } : current);
   }
   async function loadMore(node: LoadMoreNode) {
-    const loaded = await api.loadMoreComments(postId, node.childIds);
+    const loaded = await api.loadMoreComments(postId, node.childIds, node.sort);
     setTree((current) => current ? { ...current, roots: replaceCursor(current.roots, node.id, loadedTree(loaded.comments, loaded.cursors)) } : current);
   }
 
@@ -176,7 +196,7 @@ export function PostPage() {
     {error && <div className="inline-error">{error}</div>}
     <PostCard group={group} detail />
     <section className="comments-section" id="comments">
-      <header><div><p className="eyebrow">Conversation</p><h2>{post.commentCount.toLocaleString()} comments</h2></div><span>Best</span></header>
+      <header><div><p className="eyebrow">Conversation</p><h2>{post.commentCount.toLocaleString()} comments</h2></div><div className="comment-sort-control">{loading && <Spinner />}<select aria-label="Sort comments" value={sort} onChange={(event) => setSort(event.target.value as CommentSort)}><option value="best">Best</option><option value="top">Top</option><option value="qa">Q&amp;A</option><option value="controversial">Controversial</option><option value="new">New</option><option value="old">Old</option></select></div></header>
       <CommentComposer postId={post.id} parentId={null} onCreated={(comment) => setTree((current) => current ? { ...current, roots: appendChild(current.roots, null, comment) } : current)} />
       {!tree || tree.roots.length === 0 ? <EmptyState icon="comment" title="Start the conversation">Share what you think.</EmptyState>
         : <div className="comment-tree">{tree.roots.map((node) => <CommentRow key={node.id} node={node} depth={0} postId={post.id} focusedId={focusedId} onChange={changeComment} onLoadMore={loadMore} />)}</div>}

@@ -13,12 +13,15 @@ const createCommentSchema = z.object({
 
 const MAX_CURSOR_CHILD_IDS = 100;
 const MAX_VOTE_IDS_PER_QUERY = 90;
-const COMMENT_TREE_CACHE_VERSION = 3;
+const COMMENT_TREE_CACHE_VERSION = 4;
+const commentSortSchema = z.enum(["best", "top", "qa", "controversial", "new", "old"]);
+type CommentSort = z.infer<typeof commentSortSchema>;
 
 const loadMoreSchema = z.object({
   childIds: z.array(z.string().uuid()).min(1).max(MAX_CURSOR_CHILD_IDS),
   limit: z.number().int().min(1).max(100).default(100),
   maxDepth: z.number().int().min(1).max(10).default(10),
+  sort: commentSortSchema.default("best"),
 }).strict();
 
 interface RawCommentRow {
@@ -72,6 +75,7 @@ interface LoadMoreNode {
   parentId: string | null;
   remainingCount: number;
   childIds: string[];
+  sort: CommentSort;
 }
 
 type TreeNode = CommentNode | LoadMoreNode;
@@ -81,7 +85,7 @@ interface CommentTreePayload {
   roots: TreeNode[];
   requestedCount: number;
   requestedDepth: number;
-  sort: "best";
+  sort: CommentSort;
   corpusTruncated: boolean;
 }
 
@@ -92,6 +96,8 @@ interface Candidate {
 
 class MaxHeap {
   private readonly values: Candidate[] = [];
+
+  constructor(private readonly ranker: CommentRanker) {}
 
   get size(): number { return this.values.length; }
 
@@ -135,9 +141,105 @@ class MaxHeap {
   }
 
   private higher(left: Candidate, right: Candidate): boolean {
-    return left.row.score > right.row.score ||
-      (left.row.score === right.row.score && left.row.id < right.row.id);
+    return this.ranker.higher(left.row, right.row);
   }
+}
+
+interface RankValue {
+  primary: number;
+  secondary: number;
+  createdAt: number;
+}
+
+/**
+ * Calculates every expensive rank once per cache miss. Heap comparisons stay a
+ * handful of number comparisons even for confidence, controversy, and Q&A.
+ */
+class CommentRanker {
+  private readonly ranks = new Map<string, RankValue>();
+
+  constructor(
+    private readonly sort: CommentSort,
+    rows: RawCommentRow[],
+    byParent: Map<string | null, RawCommentRow[]>,
+    postAuthorId: string,
+  ) {
+    for (const row of rows) {
+      this.ranks.set(row.id, this.rank(row, byParent.get(row.id) ?? [], postAuthorId));
+    }
+  }
+
+  higher(left: RawCommentRow, right: RawCommentRow): boolean {
+    return this.compare(left, right) < 0;
+  }
+
+  compare = (left: RawCommentRow, right: RawCommentRow): number => {
+    const leftRank = this.ranks.get(left.id) ?? this.fallback(left);
+    const rightRank = this.ranks.get(right.id) ?? this.fallback(right);
+    if (leftRank.primary !== rightRank.primary) return rightRank.primary - leftRank.primary;
+    if (leftRank.secondary !== rightRank.secondary) return rightRank.secondary - leftRank.secondary;
+    if (leftRank.createdAt !== rightRank.createdAt) return leftRank.createdAt - rightRank.createdAt;
+    return left.id.localeCompare(right.id);
+  };
+
+  private rank(row: RawCommentRow, children: RawCommentRow[], postAuthorId: string): RankValue {
+    switch (this.sort) {
+      case "best":
+        return this.value(confidence(row.upvotes, row.downvotes), row.score, row.created_at);
+      case "top":
+        return this.value(row.score, row.upvotes, row.created_at);
+      case "controversial":
+        return this.value(controversy(row.upvotes, row.downvotes), row.upvotes + row.downvotes, row.created_at);
+      case "new":
+        return this.value(row.created_at, 0, row.created_at);
+      case "old":
+        return this.value(-row.created_at, 0, row.created_at);
+      case "qa": {
+        let bestAnswer: RawCommentRow | null = null;
+        let bestAnswerConfidence = 0;
+        for (const child of children) {
+          if (child.author_id !== postAuthorId) continue;
+          const answerConfidence = confidence(child.upvotes, child.downvotes);
+          if (answerConfidence > bestAnswerConfidence ||
+              (answerConfidence === bestAnswerConfidence && (!bestAnswer || child.id < bestAnswer.id))) {
+            bestAnswer = child;
+            bestAnswerConfidence = answerConfidence;
+          }
+        }
+        const questionConfidence = confidence(row.upvotes, row.downvotes);
+        const combinedLength = row.body.length + (bestAnswer?.body.length ?? 1);
+        const qaRank = questionConfidence + bestAnswerConfidence + Math.log10(Math.max(1, combinedLength)) / 5;
+        return this.value(qaRank, row.score, row.created_at);
+      }
+    }
+  }
+
+  private fallback(row: RawCommentRow): RankValue {
+    return this.value(row.score, row.upvotes, row.created_at);
+  }
+
+  private value(primary: number, secondary: number, createdAt: number): RankValue {
+    return { primary, secondary, createdAt };
+  }
+}
+
+/** Historical Reddit-style confidence sort: Wilson lower bound at 80% confidence. */
+function confidence(upvotes: number, downvotes: number): number {
+  const total = upvotes + downvotes;
+  if (total <= 0) return 0;
+  const z = 1.281551565545;
+  const proportion = upvotes / total;
+  const left = proportion + z * z / (2 * total);
+  const right = z * Math.sqrt(proportion * (1 - proportion) / total + z * z / (4 * total * total));
+  return (left - right) / (1 + z * z / total);
+}
+
+/** Rewards both vote volume and disagreement; unanimous comments rank at zero. */
+function controversy(upvotes: number, downvotes: number): number {
+  if (upvotes <= 0 || downvotes <= 0) return 0;
+  const magnitude = upvotes + downvotes;
+  const balance = Math.min(upvotes, downvotes) / Math.max(upvotes, downvotes);
+  return magnitude ** balance;
 }
 
 function parseBoundedInteger(value: string | null, fallback: number, min: number, max: number): number {
@@ -147,6 +249,15 @@ function parseBoundedInteger(value: string | null, fallback: number, min: number
     throw new AppError(422, "invalid_query", `Expected an integer between ${min} and ${max}`);
   }
   return parsed;
+}
+
+function parseCommentSort(value: string | null): CommentSort {
+  if (value === null) return "best";
+  const parsed = commentSortSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new AppError(422, "invalid_comment_sort", "Expected best, top, qa, controversial, new, or old");
+  }
+  return parsed.data;
 }
 
 function authorAvatarUrl(context: RequestContext, row: RawCommentRow): string | null {
@@ -197,7 +308,7 @@ function rawCommentJson(context: RequestContext, row: RawCommentRow) {
  * Multiple chunks may share a parent, so the first child is part of the stable
  * cursor id and therefore the Compose key.
  */
-function loadMoreNodes(parentId: string | null, childIds: string[]): LoadMoreNode[] {
+function loadMoreNodes(parentId: string | null, childIds: string[], sort: CommentSort): LoadMoreNode[] {
   const nodes: LoadMoreNode[] = [];
   for (let offset = 0; offset < childIds.length; offset += MAX_CURSOR_CHILD_IDS) {
     const chunk = childIds.slice(offset, offset + MAX_CURSOR_CHILD_IDS);
@@ -205,10 +316,11 @@ function loadMoreNodes(parentId: string | null, childIds: string[]): LoadMoreNod
     if (!firstId) continue;
     nodes.push({
       type: "load_more",
-      id: `more_${parentId ?? "root"}_${firstId}`,
+      id: `more_v${COMMENT_TREE_CACHE_VERSION}_${sort}_${parentId ?? "root"}_${firstId}`,
       parentId,
       remainingCount: chunk.length,
       childIds: chunk,
+      sort,
     });
   }
   return nodes;
@@ -222,6 +334,8 @@ function buildTree(
   maxDepth: number,
   rootCommentId: string | null,
   corpusTruncated: boolean,
+  sort: CommentSort,
+  postAuthorId: string,
 ): CommentTreePayload {
   const byParent = new Map<string | null, RawCommentRow[]>();
   for (const row of rows) {
@@ -230,7 +344,8 @@ function buildTree(
     byParent.set(row.parent_id, siblings);
   }
 
-  const heap = new MaxHeap();
+  const ranker = new CommentRanker(sort, rows, byParent, postAuthorId);
+  const heap = new MaxHeap(ranker);
   for (const root of byParent.get(rootCommentId) ?? []) heap.push({ row: root, depth: 0 });
   const selected = new Map<string, { row: RawCommentRow; depth: number; truncatedIds: string[] }>();
 
@@ -242,7 +357,7 @@ function buildTree(
     if (candidate.depth + 1 <= maxDepth) {
       for (const child of children) heap.push({ row: child, depth: candidate.depth + 1 });
     } else {
-      truncatedIds.push(...children.map((child) => child.id));
+      truncatedIds.push(...[...children].sort(ranker.compare).map((child) => child.id));
     }
     selected.set(candidate.row.id, { ...candidate, truncatedIds });
   }
@@ -260,18 +375,18 @@ function buildTree(
     const output: TreeNode[] = [];
     const children = (byParent.get(parentId) ?? [])
       .filter((row) => selected.has(row.id))
-      .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
+      .sort(ranker.compare);
     for (const row of children) {
       const selection = selected.get(row.id);
       if (!selection) continue;
       const descendants = assemble(row.id);
       if (selection.truncatedIds.length > 0) {
-        descendants.push(...loadMoreNodes(row.id, selection.truncatedIds));
+        descendants.push(...loadMoreNodes(row.id, selection.truncatedIds, sort));
       }
       output.push(rowToNode(context, row, descendants));
     }
     const remaining = leftovers.get(parentId);
-    if (remaining && remaining.length > 0) output.push(...loadMoreNodes(parentId, remaining));
+    if (remaining && remaining.length > 0) output.push(...loadMoreNodes(parentId, remaining, sort));
     return output;
   };
 
@@ -280,7 +395,7 @@ function buildTree(
     roots: assemble(rootCommentId),
     requestedCount: maxCount,
     requestedDepth: maxDepth,
-    sort: "best",
+    sort,
     corpusTruncated,
   };
 }
@@ -294,10 +409,12 @@ function buildFocusedTree(
   maxDepth: number,
   focusCommentId: string,
   corpusTruncated: boolean,
+  sort: CommentSort,
+  postAuthorId: string,
 ): CommentTreePayload {
   const focus = rows.find((row) => row.id === focusCommentId);
   if (!focus) {
-    return { postId, roots: [], requestedCount: maxCount, requestedDepth: maxDepth, sort: "best", corpusTruncated };
+    return { postId, roots: [], requestedCount: maxCount, requestedDepth: maxDepth, sort, corpusTruncated };
   }
   const replies = buildTree(
     context,
@@ -307,6 +424,8 @@ function buildFocusedTree(
     maxDepth,
     focusCommentId,
     corpusTruncated,
+    sort,
+    postAuthorId,
   );
   return { ...replies, requestedCount: maxCount, roots: [rowToNode(context, focus, replies.roots)] };
 }
@@ -472,6 +591,7 @@ export async function getCommentTree(context: RequestContext, postId: string): P
   const post = await requireVisiblePost(context, postId);
   const maxCount = parseBoundedInteger(context.url.searchParams.get("count"), 200, 1, 200);
   const maxDepth = parseBoundedInteger(context.url.searchParams.get("depth"), 10, 1, 10);
+  const sort = parseCommentSort(context.url.searchParams.get("sort"));
   const rootCommentId = context.url.searchParams.get("rootCommentId");
   const focusCommentId = context.url.searchParams.get("focusCommentId");
   if (rootCommentId && !z.string().uuid().safeParse(rootCommentId).success) {
@@ -483,16 +603,29 @@ export async function getCommentTree(context: RequestContext, postId: string): P
   if (rootCommentId && focusCommentId) {
     throw new AppError(422, "ambiguous_comment_permalink", "Choose either rootCommentId or focusCommentId");
   }
-  // Versioning prevents response-local v2 counts from masquerading as authoritative subtree
-  // totals during a rolling deployment.
+  // Versioning prevents payloads with earlier count, ranking, or cursor semantics from being
+  // served during a rolling deployment.
   const logicalRootKey = focusCommentId ? `focus:${focusCommentId}` : rootCommentId ?? "";
   const rootKey = `v${COMMENT_TREE_CACHE_VERSION}:${logicalRootKey}`;
   const cache = await context.db.prepare(
     `SELECT payload_json FROM comment_tree_cache
-     WHERE post_id = ? AND sort = 'best' AND requested_count = ?
+     WHERE post_id = ? AND sort = ? AND requested_count = ?
        AND requested_depth = ? AND root_key = ? AND post_version = ? AND cached_at > ?`,
-  ).bind(postId, maxCount, maxDepth, rootKey, post.version, Date.now() - 5 * 60 * 1_000)
+  ).bind(postId, sort, maxCount, maxDepth, rootKey, post.version, Date.now() - 5 * 60 * 1_000)
     .first<CachedTreeRow>();
+
+  const build = async (): Promise<CommentTreePayload> => {
+    const corpus = await commentCorpus(context, postId);
+    return focusCommentId
+      ? buildFocusedTree(
+          context, postId, corpus.rows, maxCount, maxDepth, focusCommentId,
+          corpus.truncated, sort, post.author_id,
+        )
+      : buildTree(
+          context, postId, corpus.rows, maxCount, maxDepth, rootCommentId,
+          corpus.truncated, sort, post.author_id,
+        );
+  };
 
   let tree: CommentTreePayload;
   let cacheStatus: "hit" | "miss";
@@ -501,17 +634,11 @@ export async function getCommentTree(context: RequestContext, postId: string): P
       tree = JSON.parse(cache.payload_json) as CommentTreePayload;
       cacheStatus = "hit";
     } catch {
-      const corpus = await commentCorpus(context, postId);
-      tree = focusCommentId
-        ? buildFocusedTree(context, postId, corpus.rows, maxCount, maxDepth, focusCommentId, corpus.truncated)
-        : buildTree(context, postId, corpus.rows, maxCount, maxDepth, rootCommentId, corpus.truncated);
+      tree = await build();
       cacheStatus = "miss";
     }
   } else {
-    const corpus = await commentCorpus(context, postId);
-    tree = focusCommentId
-      ? buildFocusedTree(context, postId, corpus.rows, maxCount, maxDepth, focusCommentId, corpus.truncated)
-      : buildTree(context, postId, corpus.rows, maxCount, maxDepth, rootCommentId, corpus.truncated);
+    tree = await build();
     cacheStatus = "miss";
   }
 
@@ -521,12 +648,12 @@ export async function getCommentTree(context: RequestContext, postId: string): P
       `INSERT INTO comment_tree_cache (
          post_id, sort, requested_count, requested_depth, root_key,
          post_version, payload_json, cached_at
-       ) VALUES (?, 'best', ?, ?, ?, ?, ?, ?)
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(post_id, sort, requested_count, requested_depth, root_key) DO UPDATE SET
          post_version = excluded.post_version,
          payload_json = excluded.payload_json,
          cached_at = excluded.cached_at`,
-    ).bind(postId, maxCount, maxDepth, rootKey, post.version, payload, Date.now()).run());
+    ).bind(postId, sort, maxCount, maxDepth, rootKey, post.version, payload, Date.now()).run());
   }
   await hydrateViewerVotes(context, tree);
   return jsonResponse({ ...tree, cacheStatus }, { headers: {
@@ -536,19 +663,19 @@ export async function getCommentTree(context: RequestContext, postId: string): P
 }
 
 export async function loadMoreComments(context: RequestContext, postId: string): Promise<Response> {
-  await requireVisiblePost(context, postId);
+  const post = await requireVisiblePost(context, postId);
   const input = await readJson(context.request, loadMoreSchema);
   const corpus = await commentCorpus(context, postId);
   const byId = new Map(corpus.rows.map((row) => [row.id, row]));
-  const byParent = new Map<string, RawCommentRow[]>();
+  const byParent = new Map<string | null, RawCommentRow[]>();
   for (const row of corpus.rows) {
-    if (!row.parent_id) continue;
     const children = byParent.get(row.parent_id) ?? [];
     children.push(row);
     byParent.set(row.parent_id, children);
   }
 
-  const heap = new MaxHeap();
+  const ranker = new CommentRanker(input.sort, corpus.rows, byParent, post.author_id);
+  const heap = new MaxHeap(ranker);
   for (const id of input.childIds) {
     const row = byId.get(id);
     if (row) heap.push({ row, depth: 0 });
@@ -563,7 +690,11 @@ export async function loadMoreComments(context: RequestContext, postId: string):
     if (candidate.depth + 1 <= input.maxDepth) {
       for (const child of children) heap.push({ row: child, depth: candidate.depth + 1 });
     } else if (children.length > 0) {
-      cursors.push(...loadMoreNodes(candidate.row.id, children.map((child) => child.id)));
+      cursors.push(...loadMoreNodes(
+        candidate.row.id,
+        [...children].sort(ranker.compare).map((child) => child.id),
+        input.sort,
+      ));
     }
   }
   const leftovers = new Map<string | null, string[]>();
@@ -574,7 +705,7 @@ export async function loadMoreComments(context: RequestContext, postId: string):
     ids.push(candidate.row.id);
     leftovers.set(candidate.row.parent_id, ids);
   }
-  for (const [parentId, ids] of leftovers) cursors.push(...loadMoreNodes(parentId, ids));
+  for (const [parentId, ids] of leftovers) cursors.push(...loadMoreNodes(parentId, ids, input.sort));
 
   if (context.viewer && comments.length > 0) {
     const byComment = await viewerVotes(context, comments.map((comment) => comment.id));
@@ -583,6 +714,7 @@ export async function loadMoreComments(context: RequestContext, postId: string):
   return jsonResponse({
     comments: comments.map((comment) => rawCommentJson(context, comment)),
     cursors,
+    sort: input.sort,
     corpusTruncated: corpus.truncated,
   });
 }

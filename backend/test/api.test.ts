@@ -614,6 +614,107 @@ describe("ReadThat backend API", () => {
     expect((full.body.roots as Array<Record<string, unknown>>)[0]?.descendantCount).toBe(13);
   });
 
+  it("builds deterministic sort-specific trees, caches them independently, and continues with the same sort", async () => {
+    const owner = client();
+    await register(owner, "sort_owner");
+    await createSubreddit(owner, "sortedthreads");
+    const post = await createTextPost(owner, "sortedthreads", "sorted-comment-post");
+    const questioner = client();
+    await register(questioner, "sort_questioner");
+    const ownerId = await env.DB.prepare("SELECT id FROM users WHERE username = 'sort_owner'").first<string>("id");
+    const questionerId = await env.DB.prepare(
+      "SELECT id FROM users WHERE username = 'sort_questioner'",
+    ).first<string>("id");
+    expect(ownerId).toBeTruthy();
+    expect(questionerId).toBeTruthy();
+    if (!ownerId || !questionerId) throw new Error("Missing sort test users");
+
+    const ids = {
+      top: "00000000-0000-4000-8000-000000000001",
+      best: "00000000-0000-4000-8000-000000000002",
+      controversial: "00000000-0000-4000-8000-000000000003",
+      qa: "00000000-0000-4000-8000-000000000004",
+      new: "00000000-0000-4000-8000-000000000005",
+      answer: "00000000-0000-4000-8000-000000000006",
+    };
+    const insert = (
+      id: string,
+      parentId: string | null,
+      authorId: string,
+      body: string,
+      depth: number,
+      createdAt: number,
+    ) => env.DB.prepare(
+      `INSERT INTO comments (
+         id, post_id, parent_id, author_id, body, depth,
+         client_mutation_id, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).bind(id, post.id, parentId, authorId, body, depth, `sort-${id}`, createdAt, createdAt);
+    await env.DB.batch([
+      insert(ids.top, null, questionerId, "Popular but divisive", 0, 1_000),
+      insert(ids.best, null, questionerId, "Universally useful", 0, 2_000),
+      insert(ids.controversial, null, questionerId, "A perfectly split opinion", 0, 3_000),
+      insert(ids.qa, null, questionerId, "How does the architecture work in practice?", 0, 4_000),
+      insert(ids.new, null, questionerId, "Most recent question", 0, 5_000),
+      insert(ids.answer, ids.qa, ownerId, "The post author gives a detailed direct answer.", 1, 4_100),
+    ]);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE comments SET upvotes = 60, downvotes = 20, score = 40 WHERE id = ?").bind(ids.top),
+      env.DB.prepare("UPDATE comments SET upvotes = 10, downvotes = 0, score = 10 WHERE id = ?").bind(ids.best),
+      env.DB.prepare("UPDATE comments SET upvotes = 50, downvotes = 50, score = 0 WHERE id = ?")
+        .bind(ids.controversial),
+      env.DB.prepare("UPDATE comments SET upvotes = 2, downvotes = 1, score = 1 WHERE id = ?").bind(ids.qa),
+      env.DB.prepare("UPDATE comments SET upvotes = 1, downvotes = 0, score = 1 WHERE id = ?").bind(ids.new),
+      env.DB.prepare("UPDATE comments SET upvotes = 20, downvotes = 0, score = 20 WHERE id = ?").bind(ids.answer),
+    ]);
+
+    const expectedFirst: Record<string, string> = {
+      best: ids.best,
+      top: ids.top,
+      qa: ids.qa,
+      controversial: ids.controversial,
+      new: ids.new,
+      old: ids.top,
+    };
+    for (const [sort, firstId] of Object.entries(expectedFirst)) {
+      const result = await owner.request(`/v1/posts/${post.id}/comments?count=200&depth=10&sort=${sort}`);
+      expect(result.response.status).toBe(200);
+      expect(result.body.sort).toBe(sort);
+      expect(result.body.cacheStatus).toBe("miss");
+      expect((result.body.roots as Array<{ id: string }>)[0]?.id).toBe(firstId);
+    }
+
+    const topAgain = await owner.request(`/v1/posts/${post.id}/comments?count=200&depth=10&sort=top`);
+    expect(topAgain.body.cacheStatus).toBe("hit");
+    const cachedSorts = await env.DB.prepare(
+      "SELECT sort FROM comment_tree_cache WHERE post_id = ? AND requested_count = 200 ORDER BY sort",
+    ).bind(post.id).all<{ sort: string }>();
+    expect(cachedSorts.results.map(({ sort }) => sort)).toEqual([
+      "best", "controversial", "new", "old", "qa", "top",
+    ]);
+
+    const firstTop = await owner.request(`/v1/posts/${post.id}/comments?count=1&depth=10&sort=top`);
+    const topCursor = (firstTop.body.roots as Array<{
+      type: string;
+      childIds?: string[];
+      sort?: string;
+    }>).find(({ type }) => type === "load_more");
+    expect(topCursor?.sort).toBe("top");
+    const more = await owner.request(`/v1/posts/${post.id}/comments/more`, json({
+      childIds: topCursor?.childIds,
+      limit: 1,
+      maxDepth: 10,
+      sort: topCursor?.sort,
+    }));
+    expect(more.response.status).toBe(200);
+    expect(more.body.sort).toBe("top");
+    expect((more.body.comments as Array<{ id: string }>)[0]?.id).toBe(ids.best);
+
+    const invalid = await owner.request(`/v1/posts/${post.id}/comments?sort=magic`);
+    expect(invalid.response.status).toBe(422);
+    expect(invalid.body.error).toMatchObject({ code: "invalid_comment_sort" });
+  });
+
   it("serializes identical comment retries and rejects mutation UUID reuse", async () => {
     const api = client();
     await register(api, "comment_idem");

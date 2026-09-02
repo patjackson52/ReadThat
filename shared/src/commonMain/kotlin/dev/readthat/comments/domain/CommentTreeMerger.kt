@@ -47,7 +47,10 @@ object CommentTreeMerger {
         incoming: CommentTree,
         @Suppress("UNUSED_PARAMETER") collapsedIds: Set<String> = emptySet(),
     ): MergeResult {
-        if (existing == null) {
+        // A sort change is a different ranked snapshot, not phase two of the
+        // tree already on screen. Preserving the old root order here would
+        // silently turn every non-default sort back into the previous one.
+        if (existing == null || existing.sort != incoming.sort) {
             return MergeResult(incoming, emptySet(), incoming.commentCount)
         }
 
