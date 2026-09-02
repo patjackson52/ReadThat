@@ -1,6 +1,9 @@
+import java.util.Properties
+
 plugins {
     id("readthat.android.application")
     id("readthat.android.compose")
+    id("works.sloop.shipyard.deploy") // dev-build distribution; see .shipyard-deploy.yaml
 }
 
 android {
@@ -24,7 +27,31 @@ android {
 
     buildFeatures { buildConfig = true }
 
+    // Shipyard Deploy shared DEVELOPMENT signing identity (non-production sample key).
+    // Debug builds carry the ".dev" application id and this signer so dev builds can
+    // update in place on enrolled devices. Never used for release.
+    val shipyardSigningProps = file(
+        (findProperty("shipyardDevSigningProps") as String?)
+            ?: "${System.getProperty("user.home")}/workspace/shipyard-deploy/infra/dev-signing/sample-dev.properties",
+    )
+    if (shipyardSigningProps.isFile) {
+        val props = Properties()
+        shipyardSigningProps.inputStream().use { props.load(it) }
+        signingConfigs.create("shipyardDev") {
+            storeFile = shipyardSigningProps.parentFile.resolve(props.getProperty("storeFile"))
+            storePassword = props.getProperty("storePassword")
+            keyAlias = props.getProperty("keyAlias")
+            keyPassword = props.getProperty("keyPassword")
+        }
+    }
+
+
     buildTypes {
+        debug {
+            // Shipyard Deploy: distinct dev application id + shared dev signer.
+            applicationIdSuffix = ".dev"
+            signingConfigs.findByName("shipyardDev")?.let { signingConfig = it }
+        }
         release {
             // Sideload distribution still benefits from the normal production optimizer and
             // resource pruning. Dependencies contribute their own consumer keep rules; the app

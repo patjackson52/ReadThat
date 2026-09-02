@@ -1,5 +1,12 @@
 pluginManagement {
     includeBuild("build-logic")
+    // Shipyard Deploy Gradle plugin (dev-build distribution). Composite build;
+    // override the location with -PshipyardDeployPluginDir.
+    val shipyardPluginDir = file(
+        (extra.properties["shipyardDeployPluginDir"] as String?)
+            ?: "${System.getProperty("user.home")}/workspace/shipyard-deploy/gradle-plugin",
+    )
+    if (shipyardPluginDir.resolve("settings.gradle.kts").isFile) includeBuild(shipyardPluginDir)
     repositories {
         google()
         mavenCentral()

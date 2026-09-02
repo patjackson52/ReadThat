@@ -1,0 +1,14 @@
+# Shipyard Deploy project configuration.
+# Schema: contracts/schemas/project-config.schema.json (SloopWorks/shipyard-deploy)
+version: 1
+
+server: https://shipyard-deploy-dev.patjackson52.workers.dev
+
+project: readthat
+
+packages:
+  dev.readthat.dev: { variant: debug, signer: sample-dev }
+
+channels:
+  main: { branch: main, mode: AUTO_INSTALL_WHEN_ALLOWED, ttl: 7d }
+  default: { branch: "*", channel: "dev-{branch_slug}", mode: NOTIFY, ttl: 48h }
